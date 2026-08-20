@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1E2836">
+<title>直線運動｜國中理化模擬</title>
+<!-- Font Awesome 6：唯一允許的外部資源（DEV_SPEC 鐵律 10） -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+/* ═══ 1. CSS 變數（對照 ../_shared/design/DESIGN_SPEC.md 第 2 節） ═══ */
+:root{
+  --c-primary:#2A6FDB;
+  --c-primary-dark:#1E57B0;
+  --c-primary-soft:#E8F0FD;
+  --c-primary-soft-bd:#C4D7F5;
+  --c-nav:#1E2836;
+  --c-nav-idle:#9DAABB;
+  --c-bg:#F6F7F9;
+  --c-surface:#FFFFFF;
+  --c-bd:#E2E5EA;
+  --c-bd-ctl:#CFD5DD;
+  --c-text:#1C2433;
+  --c-text-2:#445062;
+  --c-text-3:#7A8496;
+  --c-ok:#2F9E63;
+  --c-warn:#D64545;
+  --c-track-bg:#445062;
+  --c-slider-bg:#D3D9E1;
+  /* 版面固定值：三張圖的繪圖區左邊界一律 290＝48（縱軸標）+10+222（軌道）+10。
+     三圖左右邊緣嚴格對齊就靠這一條，變窄時只壓縮繪圖區寬度（設計稿 B 標註）。 */
+  --plot-left:290px;
+  --track-w:222px;
+}
+
+/* ═══ 2. base：字體、上下標、觸控（DEV_SPEC 第 3、4、5 節） ═══ */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;
+  color:var(--c-text);
+  line-height:1.5;
+  font-variant-numeric:tabular-nums;
+  -webkit-text-size-adjust:100%;
+}
+/* 上下標標準做法：line-height:0 不撐高行盒，跨 Windows/iPadOS 不跑版 */
+sub,sup{font-size:.62em;line-height:0;position:relative;vertical-align:baseline}
+sup{top:-.55em}
+sub{bottom:-.22em}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;text-align:left}
+.app{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+button,label.check,label.switch,input[type="range"]{touch-action:manipulation}
+canvas,input[type="range"]{touch-action:none}
+canvas{display:block}
+
+/* ═══ 3. 版面：Header / 兩欄 / 抽屜 / 導覽列（設計稿 A、B、C） ═══ */
+.app{
+  height:100vh;   /* fallback */
+  height:100dvh;  /* iPad Safari 工具列收合時的正確高度 */
+  display:flex;flex-direction:column;background:var(--c-bg);
+}
+.topbar{height:50px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;background:var(--c-surface);border-bottom:1px solid var(--c-bd)}
+.logo{width:28px;height:28px;flex:none;border-radius:7px;background:var(--c-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px}
+.title{font-size:17px;font-weight:700}
+.topbar .actions{margin-left:auto;display:flex}
+/* 視覺維持規範的 34px，外層撐到 44×44 命中區（稿 G） */
+.icon-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--c-text-2)}
+.icon-btn i{width:34px;height:34px;border-radius:8px;border:1px solid #D7DBE2;background:var(--c-surface);display:flex;align-items:center;justify-content:center;font-size:15px}
+
+main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
+.screen{display:none;height:100%}
+#screen0.active{display:grid;grid-template-columns:302px 1fr;gap:12px;min-height:0}
+#screen1.active{display:flex;align-items:center;justify-content:center;padding-bottom:12px}
+/* 佔位頁沒有可播放的東西 → 整條抽屜不出現，不留按了沒反應的控制項（稿 F） */
+.app[data-screen="1"] .drawer{display:none}
+
+/* ── 左欄 ── */
+.settings{display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0}
+.card{background:var(--c-surface);border:1px solid var(--c-bd);border-radius:10px}
+.cars-card{flex:1;min-height:0;padding:12px;display:flex;flex-direction:column;gap:8px}
+.cars-head{flex:none;display:flex;align-items:baseline;justify-content:space-between}
+.cars-head .t{font-size:13px;font-weight:700}
+.cars-head .n{font-size:12px;color:var(--c-text-3)}
+.cars-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:7px}
+
+/* 車輛卡：焦點＝2px 主色框 ＋ 主色淡底標題列 ＋ 文字徽章（三重冗餘，色弱不靠辨色也能分辨） */
+.carcard{flex:none;border:1px solid var(--c-bd);border-radius:10px;overflow:hidden;background:var(--c-surface)}
+.carcard.focus{border:2px solid var(--c-primary)}
+.carcard.off{background:var(--c-bg)}
+.car-head{display:flex;align-items:center;gap:6px;padding-right:6px;height:52px;width:100%}
+.carcard.open .car-head{height:44px}
+.carcard.focus .car-head{background:var(--c-primary-soft)}
+.car-bar{width:6px;flex:none;align-self:stretch}
+.car-eye{width:36px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--c-primary);font-size:15px}
+.carcard.off .car-eye{color:var(--c-text-3)}
+.car-name{display:flex;flex-direction:column;gap:2px;min-width:0;flex:none}
+.car-name .nm{font-size:13px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.carcard.off .car-name .nm{color:var(--c-text-3)}
+.car-name .nm .off-tag{font-weight:400}
+.car-name .sum{font-size:12px;color:var(--c-text-3);white-space:nowrap}
+.carcard.focus:not(.open) .car-name .sum{color:var(--c-text-2)}
+.carcard.off .car-name .sum{color:#9AA3B2}
+.carcard.open .car-name .sum{display:none}
+.badge-focus{flex:none;display:flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:11px;background:var(--c-primary);color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
+.badge-focus i{font-size:11px}
+.carcard:not(.open) .badge-focus,.carcard.open .mini-focus{display:none}
+.mini-focus{font-size:11px;color:var(--c-primary)}
+.carcard:not(.focus) .mini-focus{display:none}
+.car-btns{margin-left:auto;display:flex;align-items:center;gap:2px;flex:none}
+/* 稿的卡內鈕是 30px，觸控目標不足 → 視覺不變、容器撐到 36×44（DEV_SPEC 鐵律 6） */
+.car-btns button{width:36px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--c-text-2);font-size:13px}
+.car-btns .btn-del{color:var(--c-text-3)}
+.car-btns button:disabled{color:var(--c-bd-ctl);cursor:default}
+.car-body{padding:8px 10px;display:flex;flex-direction:column;gap:8px}
+.carcard:not(.open) .car-body{display:none}
+.readout-t{font-size:12px;color:var(--c-text-3)}
+.readouts{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px}
+.readouts .rc{border:1px solid var(--c-bd);border-radius:8px;padding:5px 8px}
+.readouts .rc .lbl{font-size:11px;color:var(--c-text-3)}
+.readouts .rc .val{font-size:18px;font-weight:700;line-height:1.2;min-width:6ch;display:inline-block}
+.readouts .rc .unit{font-size:11px;font-weight:400;color:var(--c-text-3)}
+.hr{height:1px;background:var(--c-bd);flex:none}
+
+/* 達 4 台上限時「禁用而非隱藏」：學生才知道這個規則存在（稿 E） */
+.btn-add{flex:none;height:44px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-primary);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-add:disabled{border-color:var(--c-bd);background:var(--c-bg);color:var(--c-text-3);cursor:default}
+
+.layers-card{flex:none;padding:11px 12px;display:flex;flex-direction:column;gap:6px}
+.layers-card .t{font-size:13px;font-weight:700}
+.layers-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+.layers-note{font-size:12px;color:var(--c-text-3);line-height:1.5}
+
+/* ── 模擬卡：軌道 ＋ x-t／v-t／a-t ── */
+.stage-card{position:relative;background:var(--c-surface);border:1px solid var(--c-bd);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0;overflow:hidden}
+/* 兩層 canvas 疊在整張卡上：靜態背景只在範圍或尺寸變更時重繪（DEV_SPEC 6.4） */
+.stage-card canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+.block-head{flex:none;height:18px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c-text-3)}
+.block-head .legend{margin-left:auto;display:flex;align-items:center;gap:5px;font-weight:700;color:var(--c-ok)}
+.block-head .legend .dash{width:16px;height:0;border-top:2px dashed var(--c-cursor,#1C2433)}
+.block-head .legend .sw{width:12px;height:9px;background:rgba(47,158,99,.22);border:1px solid var(--c-ok)}
+.track-block{flex:none;height:300px;display:flex;flex-direction:column}
+.track-row{flex:1;min-height:0;display:flex;gap:10px}
+.yaxis{width:48px;flex:none;position:relative;font-size:12px;color:var(--c-text-3)}
+.yaxis span{position:absolute;right:0;white-space:nowrap;transform:translateY(-50%)}
+.yaxis span.major{font-weight:700;color:var(--c-text-2)}
+.track{width:var(--track-w);flex:none;position:relative;background:var(--c-track-bg);border-radius:4px;overflow:hidden}
+.track .col-label{position:absolute;top:2px;width:50px;text-align:center;font-size:11px;font-weight:700}
+.plot{flex:1;min-width:0;position:relative;border-left:2px solid var(--c-bd-ctl)}
+.plot .axname{position:absolute;left:6px;top:2px;font-size:12px;font-weight:700;color:var(--c-text-2)}
+
+.vt-block{flex:1;min-height:110px;display:flex;flex-direction:column}
+.vt-head,.at-head{padding-left:var(--plot-left)}
+.vt-row,.at-row{flex:1;min-height:0;display:flex}
+.yaxis-v{width:var(--plot-left);flex:none;position:relative;font-size:12px;color:var(--c-text-3)}
+.yaxis-v span{position:absolute;right:6px;white-space:nowrap;transform:translateY(-50%)}
+.yaxis-v span.major{font-weight:700;color:var(--c-text-2)}
+.taxis{flex:none;height:14px;display:flex;padding-left:calc(var(--plot-left) + 2px);font-size:12px;color:var(--c-text-3);line-height:1.2}
+.taxis span{flex:1}
+.taxis span:last-child{flex:none}
+
+/* a-t：預設摺疊成 40px 摘要條（各車 a 值仍直接可讀），可點開成完整圖表 */
+.at-block{flex:none;display:flex;flex-direction:column}
+.at-bar{flex:none;height:40px;width:100%;border:1px solid var(--c-bd);border-radius:10px;background:var(--c-bg);display:flex;align-items:center;gap:9px;padding:0 8px 0 12px}
+.at-bar .t{font-size:13px;font-weight:700;color:var(--c-text-2);white-space:nowrap;flex:none}
+.at-bar .sub{font-size:12px;color:var(--c-text-3);white-space:nowrap;flex:none;overflow:hidden}
+.at-legend{margin-left:auto;flex:none;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c-text-2);white-space:nowrap}
+.at-legend .it{display:flex;align-items:center;gap:4px}
+.at-legend .sw{width:14px;height:3px;flex:none}
+.at-bar .caret{width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--c-text-2);font-size:13px}
+.at-open{display:none;flex:1;min-height:0;flex-direction:column}
+.stage-card.at-expanded .at-block{flex:17 1 0;min-height:0}
+.stage-card.at-expanded .at-open{display:flex}
+.stage-card.at-expanded .at-bar .sub,.stage-card.at-expanded .at-legend{display:none}
+.stage-card.at-expanded .track-block{flex:28 1 0;height:auto}
+.stage-card.at-expanded .vt-block{flex:13 1 0;min-height:0}
+.stage-card.at-expanded .taxis-vt{display:none}
+
+/* ═══ 4. 元件：滑桿、核取、toggle、抽屜、導覽（DESIGN_SPEC 第 4 節 ＋ 稿 E） ═══ */
+.sliderbox{display:flex;flex-direction:column;gap:3px}
+.sliderbox .head{display:flex;align-items:baseline;justify-content:space-between;font-size:13px;line-height:1.3}
+.sliderbox .head .name{font-weight:700;color:var(--c-text-2)}
+.sliderbox .head .val{font-weight:700}
+.sliderbox .head .unit{font-size:12px;font-weight:400;color:var(--c-text-3)}
+.sliderbox .minmax{display:flex;justify-content:space-between;font-size:12px;color:var(--c-text-3);line-height:1}
+/* 軌 7px、把手 24px；命中高度 44px，用負 margin 讓佔位回到 24（觸控與版面兩者兼顧）。
+   已填段從「零點」長出而非從左端長出——負值參數才讀得對（稿 E）。 */
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:44px;margin:-10px 0;background:transparent;display:block}
+input[type="range"]::-webkit-slider-runnable-track{height:7px;border-radius:4px;
+  background:linear-gradient(to right,var(--c-slider-bg) var(--lo,0%),var(--c-primary) var(--lo,0%),var(--c-primary) var(--hi,50%),var(--c-slider-bg) var(--hi,50%))}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid var(--c-primary);margin-top:-8.5px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+input[type="range"]::-moz-range-track{height:7px;border-radius:4px;
+  background:linear-gradient(to right,var(--c-slider-bg) var(--lo,0%),var(--c-primary) var(--lo,0%),var(--c-primary) var(--hi,50%),var(--c-slider-bg) var(--hi,50%))}
+input[type="range"]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid var(--c-primary);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+/* scrubber：軌 10px、把手 26px＋3px 框（比參數滑桿粗一階，本模擬最常被拖的元件） */
+.range-lg{margin:-9px 0}
+.range-lg::-webkit-slider-runnable-track{height:10px;border-radius:5px}
+.range-lg::-webkit-slider-thumb{width:26px;height:26px;border-width:3px;margin-top:-8px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.range-lg::-moz-range-track{height:10px;border-radius:5px}
+.range-lg::-moz-range-thumb{width:26px;height:26px;border-width:3px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+
+label.check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--c-text-2);height:44px;margin:-5px 0}
+label.check input{position:absolute;opacity:0;width:0;height:0}
+label.check .box{width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid var(--c-bd-ctl);background:var(--c-surface);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px}
+label.check input:checked+.box{background:var(--c-primary);border-color:var(--c-primary)}
+label.check .box i{visibility:hidden}
+label.check input:checked+.box i{visibility:visible}
+label.switch{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c-text-3);height:24px}
+label.switch input{position:absolute;opacity:0;width:0;height:0}
+label.switch .track-sw{width:52px;height:30px;flex:none;border-radius:15px;background:var(--c-bd-ctl);position:relative;transition:background .15s}
+label.switch .track-sw::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}
+label.switch input:checked+.track-sw{background:var(--c-primary)}
+label.switch input:checked+.track-sw::after{left:25px}
+
+.drawer{flex:none;margin:10px 14px;background:var(--c-surface);border:1px solid var(--c-bd);border-radius:12px;padding:8px 18px 10px;box-shadow:0 -4px 12px rgba(28,36,51,.05)}
+.drawer .handle{width:44px;height:5px;border-radius:3px;background:#D7DBE2;margin:0 auto 8px}
+.drawer-row{display:flex;align-items:flex-end;gap:20px}
+.playbtns{display:flex;gap:8px;flex:none;padding-bottom:9px}
+.round-btn{width:44px;height:44px;border-radius:50%;background:var(--c-bg);border:1px solid var(--c-bd-ctl);color:var(--c-text-2);display:flex;align-items:center;justify-content:center;font-size:15px}
+.round-btn.primary{background:var(--c-primary);border-color:var(--c-primary);color:#fff;font-size:16px}
+.round-btn:disabled{background:var(--c-bg);border-color:var(--c-bd);color:var(--c-bd-ctl);cursor:default}
+.speedbox{flex:none;width:190px;padding-bottom:6px}
+.speedbox .head{display:flex;align-items:baseline;justify-content:space-between;font-size:13px;margin-bottom:3px}
+.speedbox .head .name{font-weight:700;color:var(--c-text-2)}
+.speedbox .head .val{font-weight:700}
+.speed-chips{display:none;gap:6px}
+.speed-chips button{height:44px;width:46px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-text-2);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.speed-chips button[aria-pressed="true"]{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
+.autopause{flex:none;padding-bottom:6px;display:flex;flex-direction:column;gap:3px}
+.autopause .name{font-size:13px;font-weight:700;color:var(--c-text-2);white-space:nowrap}
+.scrubbox{flex:1;min-width:0}
+.scrubbox .head{display:flex;align-items:baseline;gap:8px;font-size:13px;margin-bottom:3px}
+.scrubbox .head .name{font-weight:700;color:var(--c-text-2)}
+.scrubbox .head .hint{color:var(--c-text-3);font-size:12px}
+.scrubbox .head .now{margin-left:auto;font-weight:700;color:var(--c-primary);font-size:15px;white-space:nowrap}
+.scrub-wrap{position:relative;height:26px;display:flex;align-items:center}
+.scrub-wrap input{position:relative;z-index:2}
+.scrub-ticks{position:absolute;inset:0;pointer-events:none;z-index:1}
+.scrub-ticks i{position:absolute;top:50%;transform:translate(-50%,-50%);width:2px;height:16px;background:#BFC7D1}
+.scrub-ticks i.passed{background:rgba(255,255,255,.7)}
+.scrubbox .marks{display:flex;justify-content:space-between;font-size:12px;color:var(--c-text-3);line-height:1.1}
+
+.bottomnav{height:56px;flex:none;display:flex;align-items:center;padding:0 18px;background:var(--c-nav);gap:6px}
+/* 分頁視覺 40px，上下 padding 撐滿導覽列 → 實際命中 56px（稿 E） */
+.navtab{white-space:nowrap;flex:none;height:56px;padding:0 18px;color:var(--c-nav-idle);font-size:13.5px;display:flex;align-items:center;gap:8px}
+.navtab span{display:flex;align-items:center;gap:8px;height:40px;padding:0 18px;margin:0 -18px;border-radius:8px}
+.navtab[aria-selected="true"] span{background:var(--c-primary);color:#fff;font-weight:700}
+
+/* 佔位頁：刻意的預告，不是壞掉的空白頁（稿 F） */
+.promo{width:620px;max-width:100%;background:var(--c-surface);border:1px solid var(--c-bd);border-radius:14px;padding:34px 38px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.promo .tag{height:26px;padding:0 12px;border-radius:13px;background:var(--c-primary-soft);border:1px solid var(--c-primary-soft-bd);color:var(--c-primary);font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px}
+.promo .tag i{font-size:11px}
+.promo .ico{width:72px;height:72px;border-radius:20px;background:var(--c-primary-soft);border:1px solid var(--c-primary-soft-bd);display:flex;align-items:center;justify-content:center;color:var(--c-primary);font-size:30px}
+.promo .h{font-size:22px;font-weight:700;text-align:center}
+.promo .p{font-size:14px;color:var(--c-text-2);line-height:1.7;text-align:center;max-width:460px}
+.promo .line{width:100%;height:1px;background:var(--c-bd);margin:2px 0}
+.promo .list{width:100%;display:flex;flex-direction:column;gap:10px}
+.promo .list div{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--c-text-2)}
+.promo .list i{color:var(--c-ok);font-size:15px;flex:none}
+.promo .btns{width:100%;display:flex;gap:10px;margin-top:6px}
+.promo .btns button{height:44px;border-radius:10px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
+.promo .btns .b1{flex:1;background:var(--c-primary);color:#fff}
+.promo .btns .b2{flex:none;padding:0 18px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-text-2)}
+
+.modal{position:fixed;inset:0;background:rgba(28,36,51,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+.modal.open{display:flex}
+.modal .box{background:var(--c-surface);border-radius:14px;padding:24px 26px;max-width:540px;max-height:80%;overflow-y:auto;user-select:text;-webkit-user-select:text}
+.modal h3{font-size:17px;margin:0 0 10px}
+.modal p{font-size:13.5px;color:var(--c-text-2);margin:0 0 10px;line-height:1.75}
+.modal .close{margin-left:auto;display:block;height:40px;padding:0 18px;border-radius:10px;background:var(--c-primary);color:#fff;font-size:13px;font-weight:700}
+
+/* hover 一律包在 (hover:hover)，否則 iPad 點一下會殘留 hover 不消失 */
+@media (hover:hover){
+  .icon-btn:hover i,.round-btn:not(:disabled):hover{border-color:var(--c-primary);color:var(--c-primary)}
+  .round-btn.primary:hover{background:var(--c-primary-dark);color:#fff}
+  .btn-add:not(:disabled):hover{border-color:var(--c-primary)}
+  .car-btns button:not(:disabled):hover{color:var(--c-primary)}
+  .car-btns .btn-del:not(:disabled):hover{color:var(--c-warn)}
+  .navtab[aria-selected="false"]:hover{color:#fff}
+  .at-bar:hover .caret{color:var(--c-primary)}
+  .speed-chips button[aria-pressed="false"]:hover{border-color:var(--c-primary)}
+}
+
+/* ═══ 5. 響應式：<900px（涵蓋所有 iPad 直向 768/820/834）改上下堆疊（設計稿 C） ═══ */
+@media (min-width:900px) and (max-width:1100px){
+  #screen0.active{grid-template-columns:262px 1fr}
+}
+@media (max-width:899px){
+  #screen0.active{display:flex;flex-direction:column;gap:12px}
+  .stage-card{flex:none;height:560px}
+  .settings{flex:1;min-height:0;flex-direction:row;gap:12px}
+  .cars-card{flex:1;min-width:0}
+  .layers-card{width:280px;flex:none;align-self:stretch}
+  /* 抽屜改兩列：scrubber 獨佔整寬並固定在最下（稿 E 直向速度膠囊 ＋ 難題 3 的兩列排法）。
+     稿 C 的抽屜是桌機版複製未改，直向照抄會讓 scrubber 只剩 ~186px，違反「要夠大夠好拖」。 */
+  .drawer-row{flex-wrap:wrap;row-gap:12px}
+  .speedbox{width:auto;padding-bottom:0}
+  .speedbox .head,.speedbox input[type="range"]{display:none}
+  .speed-chips{display:flex}
+  .playbtns{padding-bottom:0;order:3;margin-left:auto}
+  .autopause{padding-bottom:0}
+  .scrubbox{flex-basis:100%;min-width:100%;order:9}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app" data-screen="0">
+
+  <header class="topbar">
+    <div class="logo">理</div>
+    <div class="title">直線運動｜等速度與等加速度</div>
+    <div class="actions">
+      <button class="icon-btn" id="btnHelp" aria-label="這個模擬要教什麼"><i class="fa-solid fa-circle-question"></i></button>
+      <button class="icon-btn" id="btnFull" aria-label="全螢幕"><i class="fa-solid fa-expand"></i></button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ── 分頁 1：車子 ── -->
+    <div class="screen active" id="screen0">
+
+      <section class="settings">
+        <div class="card cars-card">
+          <div class="cars-head"><span class="t">車輛設定</span><span class="n" id="carCount"></span></div>
+          <div class="cars-list" id="carsList"></div>
+          <button class="btn-add" id="btnAdd"><i class="fa-solid fa-plus"></i><span id="addLabel">新增車輛</span></button>
+        </div>
+        <div class="card layers-card">
+          <div class="t">顯示圖層</div>
+          <div class="layers-grid">
+            <label class="check"><input type="checkbox" id="chkTangent" checked><span class="box"><i class="fa-solid fa-check"></i></span><span><i>x</i>-<i>t</i> 切線</span></label>
+            <label class="check"><input type="checkbox" id="chkArea"><span class="box"><i class="fa-solid fa-check"></i></span><span><i>v</i>-<i>t</i> 面積</span></label>
+          </div>
+          <div class="layers-note">每秒軌跡點與秒數一律顯示。</div>
+        </div>
+      </section>
+
+      <div class="stage-card" id="stageCard">
+        <canvas id="bgCanvas"></canvas>
+        <canvas id="fgCanvas"></canvas>
+
+        <div class="track-block">
+          <div class="block-head">
+            <span>垂直軌道 222px＝4 欄 × 50px（車→點→秒數）＋ <i>x</i>-<i>t</i> 圖｜共用同一縱軸</span>
+            <span class="legend" id="tangentLegend"><span class="dash"></span>切線斜率 = <i>v</i> = <span id="tangentVal">0.0</span> m/s</span>
+          </div>
+          <div class="track-row">
+            <div class="yaxis" id="yAxisPos"></div>
+            <div class="track" id="track"></div>
+            <div class="plot" id="plotXt"><span class="axname"><i>x</i></span></div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="vt-block">
+          <div class="block-head vt-head">
+            <span>速度 <i>v</i> (m/s)</span>
+            <span class="legend" id="areaLegend"><span class="sw"></span>面積 = 位移 = <span id="areaVal">0.0</span> m</span>
+          </div>
+          <div class="vt-row">
+            <div class="yaxis-v" id="yAxisV"></div>
+            <div class="plot" id="plotVt"><span class="axname"><i>v</i></span></div>
+          </div>
+        </div>
+
+        <div class="taxis taxis-vt" id="tAxisVt"></div>
+
+        <div class="at-block" id="atBlock">
+          <button class="at-bar" id="atBar" aria-expanded="false">
+            <span class="t">加速度 <i>a</i>-<i>t</i> 圖</span>
+            <span class="sub">已摺疊（等加速度為水平線）</span>
+            <span class="at-legend" id="atLegend"></span>
+            <span class="caret"><i class="fa-solid fa-chevron-down" id="atCaret"></i></span>
+          </button>
+          <div class="at-open">
+            <div class="block-head at-head"><span>加速度 <i>a</i> (m/s<sup>2</sup>)</span></div>
+            <div class="at-row">
+              <div class="yaxis-v" id="yAxisA"></div>
+              <div class="plot" id="plotAt"><span class="axname"><i>a</i></span></div>
+            </div>
+            <div class="taxis" id="tAxisAt"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 分頁 2：打點計時器（開發中預告頁） ── -->
+    <div class="screen" id="screen1">
+      <div class="promo">
+        <div class="tag"><i class="fa-solid fa-hammer"></i>開發中 · 預計 2026 年秋</div>
+        <div class="ico"><i class="fa-solid fa-stopwatch"></i></div>
+        <div class="h">打點計時器模擬</div>
+        <div class="p">下一支要做的就是它：紙帶跟著車一起被拉過打點計時器，每 <b>1/60 秒</b>打一個點。你會看到「相等時距、點距逐次拉開」印在真實的紙帶上——和這一頁 <i>x</i>-<i>t</i> 圖上的每秒軌跡點是同一件事。</div>
+        <div class="line"></div>
+        <div class="list">
+          <div><i class="fa-solid fa-circle-check"></i>拉紙帶、量相鄰點距，自己算出每段的平均速度</div>
+          <div><i class="fa-solid fa-circle-check"></i>由點距反推 <i>v</i>-<i>t</i> 圖，驗證「斜率就是加速度」</div>
+          <div><i class="fa-solid fa-circle-check"></i>與「車子」分頁的同一組參數對照，兩種測量方式互相印證</div>
+        </div>
+        <div class="btns">
+          <button class="b1" id="btnBackToSim"><i class="fa-solid fa-arrow-left"></i>回到「車子」分頁</button>
+          <button class="b2" id="btnWhat"><i class="fa-solid fa-circle-question"></i>這個模擬要教什麼</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="drawer" id="drawer">
+    <div class="handle"></div>
+    <div class="drawer-row">
+      <div class="playbtns">
+        <button class="round-btn primary" id="btnPlay" aria-label="播放"><i class="fa-solid fa-play" id="playIcon"></i></button>
+        <button class="round-btn" id="btnStep" aria-label="單步前進 0.1 秒"><i class="fa-solid fa-forward-step"></i></button>
+        <button class="round-btn" id="btnReset" aria-label="重置"><i class="fa-solid fa-rotate-left"></i></button>
+      </div>
+      <div class="speedbox">
+        <div class="head"><span class="name">速度</span><span class="val" id="speedVal">1.00×</span></div>
+        <input type="range" id="speedSlider" min="0.25" max="2" step="0.25" value="1" aria-label="播放速度倍率">
+        <div class="speed-chips" id="speedChips">
+          <button data-speed="0.5" aria-pressed="false">0.5×</button>
+          <button data-speed="1" aria-pressed="true">1×</button>
+          <button data-speed="2" aria-pressed="false">2×</button>
+        </div>
+      </div>
+      <div class="autopause">
+        <span class="name">每秒自動暫停</span>
+        <label class="switch"><input type="checkbox" id="chkAutoPause" checked><span class="track-sw"></span><span id="autoPauseTxt">開</span></label>
+      </div>
+      <div class="scrubbox">
+        <div class="head">
+          <span class="name">時間軸</span>
+          <span class="hint">拖曳可停在任一時刻</span>
+          <span class="now"><i>t</i> = <span id="tNow">0.0</span> s ／ 10 s</span>
+        </div>
+        <div class="scrub-wrap">
+          <div class="scrub-ticks" id="scrubTicks"></div>
+          <input type="range" class="range-lg" id="scrubber" min="0" max="10" step="0.05" value="0" aria-label="時間軸">
+        </div>
+        <div class="marks"><span>0 s</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10 s</span></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottomnav" id="nav">
+    <button class="navtab" data-screen="0" aria-selected="true"><span><i class="fa-solid fa-car-side"></i>車子</span></button>
+    <button class="navtab" data-screen="1" aria-selected="false"><span><i class="fa-solid fa-stopwatch"></i>打點計時器</span></button>
+  </nav>
+</div>
+
+<div class="modal" id="helpModal">
+  <div class="box">
+    <h3>這個模擬要教什麼</h3>
+    <p>國中生看得懂「車在跑」，但看不懂「<i>x</i>-<i>t</i> 圖的斜率就是速度」。本模擬把<b>軌道與三張圖放在同一條時間軸上</b>，讓你親眼看到三件事同時發生：</p>
+    <p>① <i>x</i>-<i>t</i> 圖變陡的同時，<i>v</i>-<i>t</i> 圖的高度在上升。<br>
+       ② <i>v</i>-<i>t</i> 曲線下的面積，就是 <i>x</i>-<i>t</i> 圖同一段時間的高度落差。<br>
+       ③ <i>a</i>-<i>t</i> 是一條水平線，而它決定了 <i>v</i>-<i>t</i> 的斜率。</p>
+    <p>三個參數剛好對應一條公式：<i>x</i> = <i>x</i><sub>0</sub> + <i>v</i><sub>0</sub><i>t</i> + ½<i>at</i><sup>2</sup>。
+       拖曳底部時間軸可以停在任一時刻討論；最多可以放 4 台車互相對照。</p>
+    <button class="close" id="btnCloseHelp">關閉</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══ 1. 常數 ═══ */
+const FONT_STACK = 'system-ui, -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif';
+const T_MAX = 10;          // 時間軸 0–10 s（2026-08-20 裁示，取代舊定案的 20 s）
+const STEP_DT = 0.1;       // 單步 +0.1 s
+const MAX_CARS = 4;
+const CAR_IDS = ['A', 'B', 'C', 'D'];
+
+// 車別色：軌道車體＝曲線同色。軌道底是深色 #445062，故軌道內改用同色系亮階
+const CAR_COLOR = {
+  A: { line:'#2A6FDB', edge:'#1E57B0', track:'#7DB0F0', tick:'#A9CBF5' },
+  B: { line:'#2F9E63', edge:'#227A4B', track:'#6FD39B', tick:'#9FE3BD' },
+  C: { line:'#E8871E', edge:'#B3651A', track:'#F0AA5E', tick:'#F6C795' },
+  D: { line:'#8B5CF6', edge:'#6B3FD4', track:'#A98BF8', tick:'#C9B6FA' },
+};
+const C = {
+  trackDiv:'rgba(246,247,249,.14)',   // 軌道 4 欄的分隔線
+  trackZero:'rgba(246,247,249,.85)',  // 軌道 0 m 基準線
+  axis:'#CFD5DD', grid:'#E2E5EA', cursor:'#1C2433', off:'#8A94A6',
+};
+const PARAM = {
+  x0:{ label:'初始位置 <i>x</i><sub>0</sub>', min:-100, max:100, step:5,  dec:0, unit:'m' },
+  v0:{ label:'初速度 <i>v</i><sub>0</sub>',   min:-40,  max:40,  step:1,  dec:0, unit:'m/s' },
+  a: { label:'加速度 <i>a</i>',               min:-10,  max:10,  step:0.5, dec:1, unit:'m/s<sup>2</sup>' },
+};
+// 軌道 222px ＝ 左右各 3px 留白 ＋ 4 欄 × 54px；欄內位置：車 12、軌跡點 29、秒數 36
+const TRACK_PAD = 3, COL_W = 54, COL_CAR = 12, COL_DOT = 29, COL_SEC = 36;
+
+/* ═══ 2. state：單一物件，重置時整個換新 ═══ */
+function initState(){
+  return {
+    screen:0,
+    // 預設一台等加速度的車：一開機就能看到 x-t 拋物線、v-t 斜直線、軌跡點 1:3:5
+    cars:[{ id:'A', x0:0, v0:0, a:2, visible:true }],
+    focus:'A',            // 焦點車：切線／面積畫在誰身上
+    open:'A',             // 手風琴：同時只有一張卡展開
+    t:0, speed:1, autoPause:true,
+    showTangent:true, showArea:false,
+    atExpanded:false,
+    posRange:200,               // 位置縱軸 ±200 m（階段 2 接自動延展）
+    vMin:-20, vMax:40,          // 速度縱軸（階段 3 接自適應）
+    aRange:10,
+  };
+}
+let state = initState();
+
+/* ═══ 3. 物理模型：公式解，純計算不碰 DOM（DEV_SPEC 第 1 節硬要求） ═══ */
+function posAt(car, t){ return car.x0 + car.v0 * t + 0.5 * car.a * t * t; }
+function velAt(car, t){ return car.v0 + car.a * t; }
+function carById(id){ return state.cars.find(c => c.id === id) || null; }
+function focusCar(){ return carById(state.focus); }
+
+function update(dt){
+  const prev = state.t;
+  let next = prev + dt, stop = false;
+  // 每秒自動暫停：跨越整數秒就鉗在該秒並停下，讓教師提問
+  if (state.autoPause){
+    const mark = Math.floor(prev) + 1;
+    if (next >= mark && mark <= T_MAX){ next = mark; stop = true; }
+  }
+  if (next >= T_MAX){ next = T_MAX; stop = true; }
+  // 先落定 t 再 pause——pause 會依 t 決定播放鈕與單步鈕的狀態
+  state.t = next;
+  if (stop) pause();
+}
+
+/* ═══ 4. 繪製：讀 state 畫畫面，不改 state ═══ */
+const stageCard = document.getElementById('stageCard');
+const bgCanvas = document.getElementById('bgCanvas');
+const fgCanvas = document.getElementById('fgCanvas');
+const elTrack = document.getElementById('track');
+const elPlotXt = document.getElementById('plotXt');
+const elPlotVt = document.getElementById('plotVt');
+const elPlotAt = document.getElementById('plotAt');
+let bgCtx = null, fgCtx = null, W = 0, H = 0;
+// 各繪圖區相對 stage-card 的矩形；版面由 CSS 決定，這裡只讀不改
+let R = { track:null, xt:null, vt:null, at:null };
+
+function measure(){
+  const base = stageCard.getBoundingClientRect();
+  const rect = el => {
+    const b = el.getBoundingClientRect();
+    return { x:b.left - base.left, y:b.top - base.top, w:b.width, h:b.height };
+  };
+  W = base.width; H = base.height;
+  R.track = rect(elTrack);
+  R.xt = rect(elPlotXt);
+  R.vt = rect(elPlotVt);
+  R.at = state.atExpanded ? rect(elPlotAt) : null;
+}
+
+const tx = (r, t) => r.x + t / T_MAX * r.w;
+const yPos = (r, x) => r.y + (state.posRange - x) / (2 * state.posRange) * r.h;
+const yVel = (r, v) => r.y + (state.vMax - v) / (state.vMax - state.vMin) * r.h;
+const yAcc = (r, a) => r.y + (state.aRange - a) / (2 * state.aRange) * r.h;
+
+function dashLine(ctx, x0, y0, x1, y1, color, w, dash){
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = w;
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.restore();
+}
+// 1px 實線畫在整數座標會糊：統一 +0.5 對齊像素格
+const px = v => Math.round(v) + 0.5;
+
+function drawGrid(ctx, r, zeroY){
+  for (let t = 2; t < T_MAX; t += 2){
+    const x = px(tx(r, t));
+    dashLine(ctx, x, r.y, x, r.y + r.h, C.grid, 1, [3, 3]);
+  }
+  if (zeroY !== null) dashLine(ctx, r.x, px(zeroY), r.x + r.w, px(zeroY), C.axis, 1.5);
+}
+
+function renderBg(){
+  const ctx = bgCtx; if (!ctx) return;
+  ctx.clearRect(0, 0, W, H);
+
+  // 軌道：4 欄分隔線 ＋ 0 m 基準線（軌道底色與圓角由 CSS 負責）
+  const rt = R.track;
+  for (let i = 1; i < 4; i++){
+    const x = px(rt.x + TRACK_PAD + COL_W * i);
+    dashLine(ctx, x, rt.y, x, rt.y + rt.h, C.trackDiv, 1);
+  }
+  const zeroTrackY = Math.round(yPos(rt, 0));
+  ctx.fillStyle = C.trackZero;
+  ctx.fillRect(rt.x, zeroTrackY - 1, rt.w, 2);
+
+  // x-t：縱軸與軌道共用同一比例，0 m 那條就是 x-t 的 t 軸
+  const rx = R.xt;
+  dashLine(ctx, rx.x, px(yPos(rx, state.posRange / 2)), rx.x + rx.w, px(yPos(rx, state.posRange / 2)), C.grid, 1, [3, 3]);
+  dashLine(ctx, rx.x, px(yPos(rx, -state.posRange / 2)), rx.x + rx.w, px(yPos(rx, -state.posRange / 2)), C.grid, 1, [3, 3]);
+  drawGrid(ctx, rx, yPos(rx, 0));
+
+  // v-t
+  drawGrid(ctx, R.vt, yVel(R.vt, 0));
+
+  // a-t（僅展開時）
+  if (R.at) drawGrid(ctx, R.at, yAcc(R.at, 0));
+}
+
+function render(){
+  const ctx = fgCtx; if (!ctx) return;
+  ctx.clearRect(0, 0, W, H);
+
+  // 時間游標：2px 實線貫穿三張圖（連圖間間隙也畫）。刻意不用主色——
+  // 主色已經是 A 車的曲線色，游標若用藍會被誤讀成一條資料線。
+  const rx = R.xt;
+  const bottom = R.at ? R.at.y + R.at.h : R.vt.y + R.vt.h;
+  const cx = Math.round(tx(rx, state.t));
+  ctx.fillStyle = C.cursor;
+  ctx.fillRect(cx - 1, rx.y, 2, bottom - rx.y);
+
+  // 階段 2／3 在這裡接上：車體、每秒軌跡點與秒數、三圖曲線、切線與面積填色
+}
+
+/* ═══ 5. DOM 更新（非動畫幀內的文字與版面） ═══ */
+function fmt(n, d){
+  let s = n.toFixed(d);
+  if (/^-0(\.0+)?$/.test(s)) s = s.slice(1);   // 去掉 −0.0
+  return s.replace('-', '−');             // 負號用 U+2212，不用連字號
+}
+function carLabel(car){
+  return '<i>x</i><sub>0</sub> ' + fmt(car.x0, 0) +
+         ' · <i>v</i><sub>0</sub> ' + fmt(car.v0, 0) +
+         ' · <i>a</i> ' + fmt(car.a, 1);
+}
+
+function sliderHtml(car, key){
+  const p = PARAM[key];
+  return '<div class="sliderbox">' +
+    '<div class="head"><span class="name">' + p.label + '</span>' +
+    '<span class="val"><span data-out="' + key + '">' + fmt(car[key], p.dec) + '</span> <span class="unit">' + p.unit + '</span></span></div>' +
+    '<input type="range" data-param="' + key + '" min="' + p.min + '" max="' + p.max + '" step="' + p.step + '" value="' + car[key] + '" aria-label="' + p.label.replace(/<[^>]+>/g, '') + '">' +
+    '</div>';
+}
+
+function renderCars(){
+  const list = document.getElementById('carsList');
+  const onlyOne = state.cars.length <= 1;
+  list.innerHTML = state.cars.map(car => {
+    const col = CAR_COLOR[car.id];
+    const open = state.open === car.id;
+    const cls = ['carcard'];
+    if (open) cls.push('open');
+    if (state.focus === car.id) cls.push('focus');
+    if (!car.visible) cls.push('off');
+    const barColor = car.visible ? col.line : '#C9C2E6';
+    let h = '<div class="' + cls.join(' ') + '" data-car="' + car.id + '">' +
+      '<div class="car-head" data-act="focus">' +
+        '<div class="car-bar" style="background:' + barColor + '"></div>' +
+        '<button class="car-eye" data-act="eye" aria-label="' + (car.visible ? '隱藏' : '顯示') + car.id + '車">' +
+          '<i class="fa-solid ' + (car.visible ? 'fa-eye' : 'fa-eye-slash') + '"></i></button>' +
+        '<div class="car-name"><span class="nm">' + car.id + '車' +
+          (car.visible ? '' : ' <span class="off-tag">· 已隱藏</span>') +
+          '<i class="fa-solid fa-crosshairs mini-focus"></i></span>' +
+          '<span class="sum">' + carLabel(car) + '</span></div>' +
+        (open ? '<span class="badge-focus"><i class="fa-solid fa-crosshairs"></i>焦點</span>' : '') +
+        '<span class="car-btns">' +
+          '<button class="btn-del" data-act="del" aria-label="刪除' + car.id + '車"' + (onlyOne ? ' disabled' : '') + '><i class="fa-solid fa-trash-can"></i></button>' +
+          '<button data-act="toggle" aria-label="' + (open ? '摺疊' : '展開') + car.id + '車"><i class="fa-solid ' + (open ? 'fa-chevron-up' : 'fa-chevron-down') + '"></i></button>' +
+        '</span>' +
+      '</div>';
+    if (open){
+      h += '<div class="car-body">' +
+        '<div><div class="readout-t">目前讀數（<i>t</i> = <span data-out="t">' + fmt(state.t, 1) + '</span> s）</div>' +
+        '<div class="readouts">' +
+          '<div class="rc"><div class="lbl">位置 <i>x</i></div><div class="val"><span data-out="x">' + fmt(posAt(car, state.t), 1) + '</span> <span class="unit">m</span></div></div>' +
+          '<div class="rc"><div class="lbl">速度 <i>v</i></div><div class="val"><span data-out="v">' + fmt(velAt(car, state.t), 1) + '</span> <span class="unit">m/s</span></div></div>' +
+        '</div></div>' +
+        '<div class="hr"></div>' +
+        sliderHtml(car, 'x0') + sliderHtml(car, 'v0') + sliderHtml(car, 'a') +
+      '</div>';
+    }
+    return h + '</div>';
+  }).join('');
+
+  for (const el of list.querySelectorAll('input[type="range"]')) refreshFill(el);
+
+  const shown = state.cars.filter(c => c.visible).length;
+  document.getElementById('carCount').textContent = '顯示 ' + shown + '／' + state.cars.length + ' 台';
+  const full = state.cars.length >= MAX_CARS;
+  document.getElementById('btnAdd').disabled = full;
+  document.getElementById('addLabel').textContent = full ? '新增車輛（已達 4 台上限）' : '新增車輛';
+  renderAtLegend();
+  renderTrackLabels();
+}
+
+// 軌道欄頂的 A～D 標記（跟著欄位固定，顏色→車名的對應寫死在畫面上）
+function renderTrackLabels(){
+  elTrack.innerHTML = CAR_IDS.map((id, i) => {
+    const car = carById(id);
+    if (!car) return '';
+    const col = CAR_COLOR[id];
+    const c = car.visible ? col.track : C.off;
+    let h = '<span class="col-label" style="left:' + (TRACK_PAD + COL_W * i + 2) + 'px;color:' + c + '">' + id + '</span>';
+    if (!car.visible){
+      h += '<span class="col-label" style="left:' + (TRACK_PAD + COL_W * i + 2) + 'px;top:18px;font-size:10px;color:' + C.off + '"><i class="fa-solid fa-eye-slash"></i></span>';
+    }
+    return h;
+  }).join('');
+}
+
+function renderAtLegend(){
+  document.getElementById('atLegend').innerHTML = state.cars
+    .filter(c => c.visible)
+    .map(c => '<span class="it"><span class="sw" style="background:' + CAR_COLOR[c.id].line + '"></span>' + c.id + '車 ' + fmt(c.a, 1) + '</span>')
+    .join('');
+}
+
+// 縱軸刻度：HTML 疊層，不畫進 canvas（DEV_SPEC 4.4）
+function renderAxes(){
+  const p = state.posRange;
+  document.getElementById('yAxisPos').innerHTML =
+    [[p, 0, 1], [p / 2, 25, 0], [0, 50, 1], [-p / 2, 75, 0], [-p, 100, 1]]
+      .map(([v, pct, major]) =>
+        '<span class="' + (major ? 'major' : '') + '" style="top:' + pct + '%">' + fmt(v, 0) + (major ? ' m' : '') + '</span>')
+      .join('');
+
+  document.getElementById('yAxisV').innerHTML = [state.vMax, 20, 0, state.vMin]
+    .map(v => '<span class="' + (v === 0 ? 'major' : '') + '" style="top:' +
+      ((state.vMax - v) / (state.vMax - state.vMin) * 100) + '%">' + fmt(v, 0) + '</span>').join('');
+
+  const a = state.aRange;
+  document.getElementById('yAxisA').innerHTML = [a, 0, -a]
+    .map(v => '<span class="' + (v === 0 ? 'major' : '') + '" style="top:' +
+      ((a - v) / (2 * a) * 100) + '%">' + fmt(v, 0) + '</span>').join('');
+
+  const marks = '<span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10 s</span>';
+  document.getElementById('tAxisVt').innerHTML = marks;
+  document.getElementById('tAxisAt').innerHTML = marks;
+}
+
+// 只更新會變動的數字，不重建 DOM（拖曳滑桿時重建會中斷拖曳）
+function updateReadouts(){
+  const car = focusCar();
+  document.getElementById('tNow').textContent = fmt(state.t, 1);
+  const outT = document.querySelector('[data-out="t"]');
+  if (outT) outT.textContent = fmt(state.t, 1);
+  if (car){
+    const ox = document.querySelector('[data-out="x"]'), ov = document.querySelector('[data-out="v"]');
+    if (ox) ox.textContent = fmt(posAt(car, state.t), 1);
+    if (ov) ov.textContent = fmt(velAt(car, state.t), 1);
+    document.getElementById('tangentVal').textContent = fmt(velAt(car, state.t), 1);
+    document.getElementById('areaVal').textContent = fmt(posAt(car, state.t) - car.x0, 1);
+  }
+  document.getElementById('tangentLegend').style.visibility = state.showTangent && car ? 'visible' : 'hidden';
+  document.getElementById('areaLegend').style.visibility = state.showArea && car ? 'visible' : 'hidden';
+  const sc = document.getElementById('scrubber');
+  if (sc.value !== String(state.t)) { sc.value = state.t; refreshFill(sc); }
+  for (const t of document.querySelectorAll('#scrubTicks i'))
+    t.classList.toggle('passed', +t.dataset.t <= state.t);
+}
+
+// 滑桿已填段：從零點長出而非從左端長出
+function refreshFill(el){
+  const min = +el.min, max = +el.max, v = +el.value;
+  const pct = (v - min) / (max - min) * 100;
+  const zero = Math.min(100, Math.max(0, (0 - min) / (max - min) * 100));
+  el.style.setProperty('--lo', Math.min(pct, zero) + '%');
+  el.style.setProperty('--hi', Math.max(pct, zero) + '%');
+}
+
+/* ═══ 6. 互動：Pointer Events 與控制元件 ═══ */
+const carsList = document.getElementById('carsList');
+
+carsList.addEventListener('click', e => {
+  const cardEl = e.target.closest('.carcard'); if (!cardEl) return;
+  const id = cardEl.dataset.car;
+  const btn = e.target.closest('[data-act]');
+  const act = btn ? btn.dataset.act : null;
+  if (act === 'eye'){
+    const car = carById(id); car.visible = !car.visible;
+  } else if (act === 'del'){
+    if (state.cars.length <= 1) return;
+    state.cars = state.cars.filter(c => c.id !== id);
+    if (state.focus === id) state.focus = state.cars[0].id;
+    if (state.open === id) state.open = state.focus;
+  } else if (act === 'toggle'){
+    state.open = state.open === id ? null : id;
+    if (state.open === id) state.focus = id;
+  } else {
+    // 點卡片其他地方＝設為焦點並展開（手風琴：同時只有一張展開）
+    state.focus = id; state.open = id;
+  }
+  renderCars(); syncAll();
+});
+
+// 滑桿：只更新該卡的數字與畫面，不重建 DOM
+carsList.addEventListener('input', e => {
+  const input = e.target.closest('input[type="range"]'); if (!input) return;
+  const cardEl = input.closest('.carcard');
+  const car = carById(cardEl.dataset.car);
+  const key = input.dataset.param;
+  car[key] = +input.value;
+  refreshFill(input);
+  const out = cardEl.querySelector('[data-out="' + key + '"]');
+  if (out) out.textContent = fmt(car[key], PARAM[key].dec);
+  cardEl.querySelector('.sum').innerHTML = carLabel(car);
+  renderAtLegend();
+  updateReadouts(); render();
+});
+
+document.getElementById('btnAdd').addEventListener('click', () => {
+  if (state.cars.length >= MAX_CARS) return;
+  // 補「缺號最小者」：顏色→車名→軌道欄位的對應永遠固定
+  const id = CAR_IDS.find(x => !carById(x));
+  if (!id) return;
+  state.cars.push({ id, x0:0, v0:20, a:0, visible:true });
+  state.cars.sort((p, q) => CAR_IDS.indexOf(p.id) - CAR_IDS.indexOf(q.id));
+  state.focus = id; state.open = id;
+  renderCars(); syncAll();
+});
+
+document.getElementById('chkTangent').addEventListener('change', e => {
+  state.showTangent = e.target.checked; updateReadouts(); render();
+});
+document.getElementById('chkArea').addEventListener('change', e => {
+  state.showArea = e.target.checked; updateReadouts(); render();
+});
+
+document.getElementById('atBar').addEventListener('click', () => {
+  state.atExpanded = !state.atExpanded;
+  stageCard.classList.toggle('at-expanded', state.atExpanded);
+  document.getElementById('atBar').setAttribute('aria-expanded', String(state.atExpanded));
+  document.getElementById('atCaret').className = 'fa-solid ' + (state.atExpanded ? 'fa-chevron-up' : 'fa-chevron-down');
+  fitAll();
+});
+
+/* ── 播放控制 ── */
+let running = false, wasRunning = false, last = 0, rafId = 0;
+
+function loop(ts){
+  if (!running) return;
+  const dt = Math.min((ts - last) / 1000, 0.05);   // 鉗 50ms：切分頁再回來不會跳格
+  last = ts;
+  update(dt * state.speed);
+  updateReadouts(); render();
+  rafId = requestAnimationFrame(loop);
+}
+function play(){
+  if (running || state.t >= T_MAX) return;
+  running = true; last = performance.now();
+  rafId = requestAnimationFrame(loop);
+  syncPlayBtn();
+}
+function pause(){
+  running = false; cancelAnimationFrame(rafId);
+  syncPlayBtn();
+}
+function syncPlayBtn(){
+  // 跑到 10 s 時播放鈕轉成「重新播放」提示態，不留一顆按了沒反應的鈕（稿 E）
+  const atEnd = state.t >= T_MAX;
+  const icon = atEnd ? 'fa-rotate-left' : running ? 'fa-pause' : 'fa-play';
+  document.getElementById('playIcon').className = 'fa-solid ' + icon;
+  document.getElementById('btnPlay').setAttribute('aria-label', atEnd ? '重新播放' : running ? '暫停' : '播放');
+  document.getElementById('btnStep').disabled = atEnd;
+}
+function restart(){
+  state.t = 0;
+  syncAll();
+  play();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden){ wasRunning = running; pause(); }
+  else if (wasRunning) play();
+});
+document.getElementById('btnPlay').addEventListener('click', () => {
+  if (state.t >= T_MAX) restart();
+  else if (running) pause();
+  else play();
+});
+document.getElementById('btnStep').addEventListener('click', () => {
+  if (running) pause();
+  state.t = Math.min(T_MAX, state.t + STEP_DT);
+  syncAll();
+});
+document.getElementById('btnReset').addEventListener('click', () => {
+  pause();
+  const cars = state.cars, focus = state.focus, open = state.open, atExp = state.atExpanded;
+  state = initState();
+  state.cars = cars; state.focus = focus; state.open = open; state.atExpanded = atExp;
+  document.getElementById('speedSlider').value = 1;
+  document.getElementById('chkAutoPause').checked = true;
+  document.getElementById('chkTangent').checked = true;
+  document.getElementById('chkArea').checked = false;
+  for (const b of document.querySelectorAll('#speedChips button'))
+    b.setAttribute('aria-pressed', String(b.dataset.speed === '1'));
+  document.getElementById('speedVal').textContent = '1.00×';
+  document.getElementById('autoPauseTxt').textContent = '開';
+  refreshFill(document.getElementById('speedSlider'));
+  renderCars(); syncAll();
+});
+
+function setSpeed(v){
+  state.speed = v;
+  document.getElementById('speedVal').textContent = v.toFixed(2) + '×';
+  const s = document.getElementById('speedSlider');
+  s.value = v; refreshFill(s);
+  for (const b of document.querySelectorAll('#speedChips button'))
+    b.setAttribute('aria-pressed', String(+b.dataset.speed === v));
+}
+document.getElementById('speedSlider').addEventListener('input', e => setSpeed(+e.target.value));
+document.getElementById('speedChips').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  setSpeed(+b.dataset.speed);
+});
+document.getElementById('chkAutoPause').addEventListener('change', e => {
+  state.autoPause = e.target.checked;
+  document.getElementById('autoPauseTxt').textContent = e.target.checked ? '開' : '關';
+});
+
+// scrubber：只改 state.t，其餘全部由 render 重算。拖曳時自動暫停、放手不自動續播
+const scrubber = document.getElementById('scrubber');
+scrubber.addEventListener('pointerdown', () => { if (running) pause(); });
+scrubber.addEventListener('input', e => {
+  state.t = +e.target.value;
+  refreshFill(e.target);
+  updateReadouts(); render(); syncPlayBtn();
+});
+
+/* ── 分頁切換：同一檔案內用 display 切換 ── */
+document.getElementById('nav').addEventListener('click', e => {
+  const tab = e.target.closest('.navtab'); if (!tab) return;
+  showScreen(+tab.dataset.screen);
+});
+function showScreen(n){
+  if (n !== 0) pause();
+  state.screen = n;
+  document.getElementById('app').dataset.screen = n;
+  for (const t of document.querySelectorAll('.navtab'))
+    t.setAttribute('aria-selected', String(+t.dataset.screen === n));
+  for (const s of document.querySelectorAll('.screen')) s.classList.remove('active');
+  document.getElementById('screen' + n).classList.add('active');
+  if (n === 0) fitAll();
+}
+document.getElementById('btnBackToSim').addEventListener('click', () => showScreen(0));
+
+/* ── 說明彈窗與全螢幕 ── */
+const helpModal = document.getElementById('helpModal');
+const openHelp = () => helpModal.classList.add('open');
+document.getElementById('btnHelp').addEventListener('click', openHelp);
+document.getElementById('btnWhat').addEventListener('click', openHelp);
+document.getElementById('btnCloseHelp').addEventListener('click', () => helpModal.classList.remove('open'));
+helpModal.addEventListener('click', e => { if (e.target === e.currentTarget) helpModal.classList.remove('open'); });
+
+const appEl = document.getElementById('app');
+const fullBtn = document.getElementById('btnFull');
+if (appEl.requestFullscreen || appEl.webkitRequestFullscreen){
+  fullBtn.addEventListener('click', () => {
+    if (document.fullscreenElement || document.webkitFullscreenElement){
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+      (appEl.requestFullscreen || appEl.webkitRequestFullscreen).call(appEl);
+    }
+  });
+} else fullBtn.style.display = 'none';
+
+/* ═══ 7. 初始化 ═══ */
+function fitCanvas(canvas){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);   // 高 DPR 平板鉗 2
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);                  // 之後一律用 CSS px 座標繪製
+  return ctx;
+}
+function fitAll(){
+  if (state.screen !== 0) return;
+  bgCtx = fitCanvas(bgCanvas);
+  fgCtx = fitCanvas(fgCanvas);
+  measure();
+  renderBg(); render();
+}
+// 旋轉與分割畫面靠 ResizeObserver 重算，不監聽 orientationchange
+new ResizeObserver(fitAll).observe(stageCard);
+// 換螢幕（筆電接投影機）時 DPR 變了但 CSS 尺寸沒變，ResizeObserver 不會觸發 → 另外盯著
+function watchDpr(){
+  matchMedia('(resolution: ' + window.devicePixelRatio + 'dppx)')
+    .addEventListener('change', () => { fitAll(); watchDpr(); }, { once:true });
+}
+watchDpr();
+
+function syncAll(){
+  measure(); renderAxes(); updateReadouts(); renderBg(); render(); syncPlayBtn();
+}
+
+document.getElementById('scrubTicks').innerHTML =
+  [2, 4, 6, 8].map(t => '<i data-t="' + t + '" style="left:' + (t / T_MAX * 100) + '%"></i>').join('');
+refreshFill(document.getElementById('speedSlider'));
+refreshFill(scrubber);
+renderCars();
+renderAxes();
+fitAll();
+syncAll();
+</script>
+</body>
+</html>
