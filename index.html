@@ -140,6 +140,9 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 .block-head .legend .sw{width:12px;height:9px;background:rgba(47,158,99,.22);border:1px solid var(--c-ok)}
 .track-block{flex:none;height:300px;display:flex;flex-direction:column}
 .track-row{flex:1;min-height:0;display:flex;gap:10px}
+/* 座標軸延展時刻度淡出換字再淡入，避免數字瞬間跳動 */
+.yaxis,.yaxis-v{transition:opacity .12s linear}
+.yaxis.fading,.yaxis-v.fading{opacity:.08}
 .yaxis{width:48px;flex:none;position:relative;font-size:12px;color:var(--c-text-3)}
 .yaxis span{position:absolute;right:0;white-space:nowrap;transform:translateY(-50%)}
 .yaxis span.major{font-weight:700;color:var(--c-text-2)}
@@ -501,8 +504,9 @@ function initState(){
     t:0, speed:1, autoPause:true,
     showTangent:true, showArea:false,
     atExpanded:false,
-    posRange:200,               // 位置縱軸 ±200 m（階段 2 接自動延展）
-    vMin:-20, vMax:40,          // 速度縱軸（階段 3 接自適應）
+    // 三個縱軸範圍：初值只是補間起點，開機與每次改參數都由 computeRanges() 重算
+    posRange:200,
+    vMin:-20, vMax:40,
     aRange:10,
   };
 }
@@ -526,6 +530,94 @@ function update(dt){
   // 先落定 t 再 pause——pause 會依 t 決定播放鈕與單步鈕的狀態
   state.t = next;
   if (stop) pause();
+}
+
+/* ═══ 3.5 縱軸範圍：改參數時一次算好整段 0–10 s 的值域 ═══
+   刻意不在播放中重算：軸若跟著車跑而變動，學生的參照系會一直晃，
+   且階段 3 的曲線畫滿 0–10 s，軸只跟到當前時刻的話後半段會被裁掉。 */
+// 級距只走 1 / 2 / 5 的十倍冪，軸上才會是學生讀得出來的整數
+function niceStep(v){
+  if (!(v > 0)) return 1;
+  const e = Math.pow(10, Math.floor(Math.log10(v)));
+  const m = v / e;
+  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * e;
+}
+// 軸的半幅＝級距的整數倍。直接把半幅本身取成級距值會跳太粗
+//（例如最大值 21.6 會被推到 50，圖只用掉四成高度），故先切成約 4 格再進位
+function niceRange(v){
+  if (!(v > 0)) return 0;
+  const step = niceStep(v / 4);
+  return Math.ceil(v / step - 1e-9) * step;
+}
+
+function computeRanges(){
+  let xMax = 0, vLo = 0, vHi = 0, aMax = 0;
+  for (const car of state.cars){
+    if (!car.visible) continue;
+    // 位置用解析法取極值：兩端點 ＋ 折返點（v=0 的時刻），不必逐點取樣
+    let lo = Math.min(posAt(car, 0), posAt(car, T_MAX));
+    let hi = Math.max(posAt(car, 0), posAt(car, T_MAX));
+    if (car.a !== 0){
+      const ts = -car.v0 / car.a;
+      if (ts > 0 && ts < T_MAX){ const p = posAt(car, ts); lo = Math.min(lo, p); hi = Math.max(hi, p); }
+    }
+    xMax = Math.max(xMax, Math.abs(lo), Math.abs(hi));
+    vLo = Math.min(vLo, velAt(car, 0), velAt(car, T_MAX));
+    vHi = Math.max(vHi, velAt(car, 0), velAt(car, T_MAX));
+    aMax = Math.max(aMax, Math.abs(car.a));
+  }
+  // 位置與加速度軸維持對稱：軌道的 0 m 基準線要恆在正中央
+  const posRange = Math.max(50, niceRange(xMax * 1.08));
+  const aRange = Math.max(1, niceRange(aMax * 1.08));
+  // v 軸上下不對稱，但兩邊共用同一級距，格線才會整齊
+  const vStep = niceStep(Math.max(Math.abs(vLo), Math.abs(vHi)) * 1.08 / 4);
+  let vMax = vHi > 0 ? Math.ceil(vHi * 1.08 / vStep - 1e-9) * vStep : 0;
+  let vMin = vLo < 0 ? -Math.ceil(-vLo * 1.08 / vStep - 1e-9) * vStep : 0;
+  if (vMax - vMin < 10){          // 全部等速或靜止時仍要有可讀的高度
+    if (vMax > 0) vMax = Math.max(vMax, 10);
+    else if (vMin < 0) vMin = Math.min(vMin, -10);
+    else { vMax = 10; vMin = -10; }
+  }
+  return { posRange, vMin, vMax, aRange };
+}
+
+const RANGE_MS = 250;
+let rangeRaf = 0, rangeFrom = null, rangeTo = null, rangeT0 = 0;
+
+function rangeStep(ts){
+  const k = Math.min(1, (ts - rangeT0) / RANGE_MS);
+  const e = 1 - Math.pow(1 - k, 3);
+  const mix = key => rangeFrom[key] + (rangeTo[key] - rangeFrom[key]) * e;
+  state.posRange = mix('posRange');
+  state.vMin = mix('vMin'); state.vMax = mix('vMax');
+  state.aRange = mix('aRange');
+  renderBg(); render();
+  if (k < 1){ rangeRaf = requestAnimationFrame(rangeStep); return; }
+  Object.assign(state, rangeTo);   // 收尾落在精確值，避免補間殘留浮點誤差
+  renderBg(); render();
+}
+
+// immediate：開機與重置時直接套用，不要看到一段從預設值補間過去的動畫
+function syncRanges(immediate){
+  const to = computeRanges();
+  const keys = ['posRange', 'vMin', 'vMax', 'aRange'];
+  if (keys.every(k => state[k] === to[k])) return;
+  cancelAnimationFrame(rangeRaf);
+  if (immediate){ Object.assign(state, to); renderAxes(); return; }
+  rangeFrom = {}; for (const k of keys) rangeFrom[k] = state[k];
+  rangeTo = to; rangeT0 = performance.now();
+  fadeAxes(to);
+  rangeRaf = requestAnimationFrame(rangeStep);
+}
+
+// 刻度直接換成目標值（不跟著補間跑），靠淡出淡入蓋掉這 250 ms 的暫時不一致
+function fadeAxes(to){
+  const els = [document.getElementById('yAxisPos'), document.getElementById('yAxisV'), document.getElementById('yAxisA')];
+  for (const el of els) el.classList.add('fading');
+  setTimeout(() => {
+    renderAxes(to);
+    for (const el of els) el.classList.remove('fading');
+  }, 120);
 }
 
 /* ═══ 4. 繪製：讀 state 畫畫面，不改 state ═══ */
@@ -603,9 +695,167 @@ function renderBg(){
   if (R.at) drawGrid(ctx, R.at, yAcc(R.at, 0));
 }
 
+function clipRect(ctx, r){ ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip(); }
+// 舊版 iPadOS Safari 沒有 ctx.roundRect，自己畫
+function roundRectPath(ctx, x, y, w, h, r){
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+function hexA(hex, a){
+  const n = parseInt(hex.slice(1), 16);
+  return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+const colX = i => R.track.x + TRACK_PAD + COL_W * i;   // 第 i 欄的起點
+
+// 車體：canvas 幾何繪製。禁止在 canvas 內畫 Font Awesome 字符（DEV_SPEC 6.3）
+function drawCar(ctx, cx, cy, len, col, dir){
+  const w = Math.round(len * 0.62), wh = len * 0.22, wy = len * 0.26;
+  ctx.save();
+  ctx.fillStyle = col.edge;
+  for (const sy of [-1, 1]) for (const sx of [-1, 1]){
+    roundRectPath(ctx, sx < 0 ? cx - w / 2 - 3 : cx + w / 2, cy + sy * wy - wh / 2, 3, wh, 1.5);
+    ctx.fill();
+  }
+  roundRectPath(ctx, cx - w / 2, cy - len / 2, w, len, 5);
+  ctx.fillStyle = col.track; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = col.edge; ctx.stroke();
+  // 車頭端的亮色擋風線：本模擬不畫速度箭頭，朝向全靠這一道線
+  ctx.fillStyle = 'rgba(255,255,255,.82)';
+  ctx.fillRect(cx - w * 0.3, cy - dir * len * 0.26 - 1, w * 0.6, 2);
+  ctx.restore();
+}
+
+function drawTrack(ctx){
+  const rt = R.track; if (!rt) return;
+  ctx.save();
+  clipRect(ctx, rt);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const nowSec = Math.floor(state.t + 1e-9);
+  CAR_IDS.forEach((id, i) => {
+    const car = carById(id);
+    if (!car || !car.visible) return;
+    const col = CAR_COLOR[id], x0 = colX(i);
+    let lastLabelY = -Infinity;
+    // 每秒軌跡點：整數秒直接代公式，不累積資料陣列（DEV_SPEC 6.4）
+    for (let s = 0; s <= nowSec; s++){
+      const y = yPos(rt, posAt(car, s));
+      const newest = s === nowSec;
+      ctx.globalAlpha = newest ? 1 : 0.6;
+      ctx.fillStyle = col.track;
+      ctx.beginPath(); ctx.arc(x0 + COL_DOT, y, newest ? 4.5 : 3.5, 0, Math.PI * 2); ctx.fill();
+      if (newest){ ctx.lineWidth = 2; ctx.strokeStyle = '#FFFFFF'; ctx.stroke(); }
+      ctx.globalAlpha = 1;
+      // 兩點擠在一起時只省略數字，點照畫
+      if (Math.abs(y - lastLabelY) >= 10){
+        ctx.fillStyle = newest ? '#FFFFFF' : col.tick;
+        ctx.font = '700 ' + (newest ? 10 : 9) + 'px ' + FONT_STACK;
+        ctx.fillText(String(s), x0 + COL_SEC, y);
+        lastLabelY = y;
+      }
+    }
+    drawCar(ctx, x0 + COL_CAR, yPos(rt, posAt(car, state.t)),
+            id === state.focus ? 20 : 16, col, velAt(car, state.t) < 0 ? -1 : 1);
+  });
+  ctx.restore();
+}
+
+// 三張圖的曲線都畫滿 0–10 s：游標負責指示「現在在哪」，不靠曲線長短
+function drawCurves(ctx){
+  for (const car of state.cars){
+    if (!car.visible) continue;
+    const focus = car.id === state.focus;
+    const style = () => {
+      // 線寬也是焦點線索，不只靠顏色
+      ctx.lineWidth = focus ? 3.5 : 2;
+      ctx.strokeStyle = CAR_COLOR[car.id].line;
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.setLineDash([]);
+    };
+
+    ctx.save(); clipRect(ctx, R.xt); style();
+    ctx.beginPath();
+    const n = Math.max(2, Math.ceil(R.xt.w / 2.5));   // 拋物線是唯一需要取樣的一張
+    for (let i = 0; i <= n; i++){
+      const x = R.xt.x + R.xt.w * i / n;
+      const y = yPos(R.xt, posAt(car, T_MAX * i / n));
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke(); ctx.restore();
+
+    ctx.save(); clipRect(ctx, R.vt); style();
+    ctx.beginPath();
+    ctx.moveTo(R.vt.x, yVel(R.vt, velAt(car, 0)));
+    ctx.lineTo(R.vt.x + R.vt.w, yVel(R.vt, velAt(car, T_MAX)));
+    ctx.stroke(); ctx.restore();
+
+    if (R.at){
+      ctx.save(); clipRect(ctx, R.at); style();
+      // a=0 會與零基線完全重疊，改虛線才看得出「線還在」
+      if (car.a === 0) ctx.setLineDash([6, 4]);
+      const y = yAcc(R.at, car.a);
+      ctx.beginPath(); ctx.moveTo(R.at.x, y); ctx.lineTo(R.at.x + R.at.w, y); ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
+// v-t 曲線下 0→t 的面積＝位移，只畫焦點車
+function drawArea(ctx){
+  const car = focusCar();
+  if (!state.showArea || !car || !car.visible) return;
+  const r = R.vt, zero = yVel(r, 0);
+  ctx.save(); clipRect(ctx, r);
+  ctx.fillStyle = hexA(CAR_COLOR[car.id].line, 0.22);
+  ctx.beginPath();
+  ctx.moveTo(tx(r, 0), zero);
+  ctx.lineTo(tx(r, 0), yVel(r, velAt(car, 0)));
+  ctx.lineTo(tx(r, state.t), yVel(r, velAt(car, state.t)));
+  ctx.lineTo(tx(r, state.t), zero);
+  ctx.closePath();
+  ctx.fill();   // v 跨零時這個四邊形自交，nonzero 填法會自然分成正負兩塊，正是要的
+  ctx.restore();
+}
+
+// x-t 游標處的切線，只畫焦點車。斜率數值走 HTML 膠囊，不畫進 canvas
+function drawTangent(ctx){
+  const car = focusCar();
+  if (!state.showTangent || !car || !car.visible) return;
+  const r = R.xt, t0 = state.t, x0 = posAt(car, t0), v = velAt(car, t0);
+  const ta = t0 - 4, tb = t0 + 4;   // 長度固定 ±4 s，不隨縮放改變
+  const ax = tx(r, ta), ay = yPos(r, x0 + v * (ta - t0));
+  const bx = tx(r, tb), by = yPos(r, x0 + v * (tb - t0));
+  ctx.save(); clipRect(ctx, r);
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6;   // 先壓白底，跨過任何曲線都看得見
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.strokeStyle = C.cursor; ctx.lineWidth = 2; ctx.setLineDash([7, 5]);
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.restore();
+}
+
+function drawNowDots(ctx){
+  const car = focusCar();
+  if (!car || !car.visible) return;
+  const dot = (r, y) => {
+    ctx.beginPath(); ctx.arc(tx(r, state.t), y, 5.5, 0, Math.PI * 2);
+    ctx.fillStyle = CAR_COLOR[car.id].line; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+  };
+  ctx.save(); clipRect(ctx, R.xt); dot(R.xt, yPos(R.xt, posAt(car, state.t))); ctx.restore();
+  ctx.save(); clipRect(ctx, R.vt); dot(R.vt, yVel(R.vt, velAt(car, state.t))); ctx.restore();
+}
+
 function render(){
   const ctx = fgCtx; if (!ctx) return;
   ctx.clearRect(0, 0, W, H);
+
+  drawArea(ctx);     // 面積在最底層，不蓋住曲線
+  drawCurves(ctx);
 
   // 時間游標：2px 實線貫穿三張圖（連圖間間隙也畫）。刻意不用主色——
   // 主色已經是 A 車的曲線色，游標若用藍會被誤讀成一條資料線。
@@ -615,7 +865,9 @@ function render(){
   ctx.fillStyle = C.cursor;
   ctx.fillRect(cx - 1, rx.y, 2, bottom - rx.y);
 
-  // 階段 2／3 在這裡接上：車體、每秒軌跡點與秒數、三圖曲線、切線與面積填色
+  drawTangent(ctx);
+  drawNowDots(ctx);
+  drawTrack(ctx);
 }
 
 /* ═══ 5. DOM 更新（非動畫幀內的文字與版面） ═══ */
@@ -713,22 +965,30 @@ function renderAtLegend(){
 }
 
 // 縱軸刻度：HTML 疊層，不畫進 canvas（DEV_SPEC 4.4）
-function renderAxes(){
-  const p = state.posRange;
+// 刻度值可能是 25 也可能是 2.5，小數位依值決定，不要固定一位
+const axisFmt = v => fmt(v, Number.isInteger(v) ? 0 : 1);
+
+// r 省略時讀 state；軸延展補間中會傳入「目標範圍」，讓刻度一次換到位
+function renderAxes(r){
+  r = r || state;
+  const p = r.posRange;
   document.getElementById('yAxisPos').innerHTML =
     [[p, 0, 1], [p / 2, 25, 0], [0, 50, 1], [-p / 2, 75, 0], [-p, 100, 1]]
       .map(([v, pct, major]) =>
-        '<span class="' + (major ? 'major' : '') + '" style="top:' + pct + '%">' + fmt(v, 0) + (major ? ' m' : '') + '</span>')
+        '<span class="' + (major ? 'major' : '') + '" style="top:' + pct + '%">' + axisFmt(v) + (major ? ' m' : '') + '</span>')
       .join('');
 
-  document.getElementById('yAxisV').innerHTML = [state.vMax, 20, 0, state.vMin]
+  const vs = [r.vMax, 0, r.vMin];
+  if (r.vMax > 0) vs.push(r.vMax / 2);
+  if (r.vMin < 0) vs.push(r.vMin / 2);
+  document.getElementById('yAxisV').innerHTML = vs
     .map(v => '<span class="' + (v === 0 ? 'major' : '') + '" style="top:' +
-      ((state.vMax - v) / (state.vMax - state.vMin) * 100) + '%">' + fmt(v, 0) + '</span>').join('');
+      ((r.vMax - v) / (r.vMax - r.vMin) * 100) + '%">' + axisFmt(v) + '</span>').join('');
 
-  const a = state.aRange;
+  const a = r.aRange;
   document.getElementById('yAxisA').innerHTML = [a, 0, -a]
     .map(v => '<span class="' + (v === 0 ? 'major' : '') + '" style="top:' +
-      ((a - v) / (2 * a) * 100) + '%">' + fmt(v, 0) + '</span>').join('');
+      ((a - v) / (2 * a) * 100) + '%">' + axisFmt(v) + '</span>').join('');
 
   const marks = '<span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10 s</span>';
   document.getElementById('tAxisVt').innerHTML = marks;
@@ -787,7 +1047,7 @@ carsList.addEventListener('click', e => {
     // 點卡片其他地方＝設為焦點並展開（手風琴：同時只有一張展開）
     state.focus = id; state.open = id;
   }
-  renderCars(); syncAll();
+  renderCars(); syncRanges(); syncAll();
 });
 
 // 滑桿：只更新該卡的數字與畫面，不重建 DOM
@@ -802,6 +1062,7 @@ carsList.addEventListener('input', e => {
   if (out) out.textContent = fmt(car[key], PARAM[key].dec);
   cardEl.querySelector('.sum').innerHTML = carLabel(car);
   renderAtLegend();
+  syncRanges();
   updateReadouts(); render();
 });
 
@@ -813,7 +1074,7 @@ document.getElementById('btnAdd').addEventListener('click', () => {
   state.cars.push({ id, x0:0, v0:20, a:0, visible:true });
   state.cars.sort((p, q) => CAR_IDS.indexOf(p.id) - CAR_IDS.indexOf(q.id));
   state.focus = id; state.open = id;
-  renderCars(); syncAll();
+  renderCars(); syncRanges(); syncAll();
 });
 
 document.getElementById('chkTangent').addEventListener('change', e => {
@@ -893,7 +1154,7 @@ document.getElementById('btnReset').addEventListener('click', () => {
   document.getElementById('speedVal').textContent = '1.00×';
   document.getElementById('autoPauseTxt').textContent = '開';
   refreshFill(document.getElementById('speedSlider'));
-  renderCars(); syncAll();
+  renderCars(); syncRanges(true); syncAll();
 });
 
 function setSpeed(v){
@@ -995,6 +1256,7 @@ document.getElementById('scrubTicks').innerHTML =
 refreshFill(document.getElementById('speedSlider'));
 refreshFill(scrubber);
 renderCars();
+syncRanges(true);
 renderAxes();
 fitAll();
 syncAll();
