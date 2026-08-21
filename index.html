@@ -486,9 +486,11 @@ const C = {
   axis:'#CFD5DD', grid:'#E2E5EA', cursor:'#1C2433', off:'#8A94A6',
 };
 const PARAM = {
-  x0:{ label:'初始位置 <i>x</i><sub>0</sub>', min:-100, max:100, step:5,  dec:0, unit:'m' },
-  v0:{ label:'初速度 <i>v</i><sub>0</sub>',   min:-40,  max:40,  step:1,  dec:0, unit:'m/s' },
-  a: { label:'加速度 <i>a</i>',               min:-10,  max:10,  step:0.5, dec:1, unit:'m/s<sup>2</sup>' },
+  // 三個滑桿都只有 5 個檔位（step ＝ 全幅的四分之一），拖曳時一格一格跳，
+  // 學生設得出來的值就是課本上會出現的那幾個整數
+  x0:{ label:'初始位置 <i>x</i><sub>0</sub>', min:-100, max:100, step:50, dec:0, unit:'m' },
+  v0:{ label:'初速度 <i>v</i><sub>0</sub>',   min:-40,  max:40,  step:20, dec:0, unit:'m/s' },
+  a: { label:'加速度 <i>a</i>',               min:-4,   max:4,   step:2,  dec:0, unit:'m/s<sup>2</sup>' },
 };
 // 軌道 222px ＝ 左右各 3px 留白 ＋ 4 欄 × 54px；欄內位置：車 12、軌跡點 29、秒數 36
 const TRACK_PAD = 3, COL_W = 54, COL_CAR = 12, COL_DOT = 29, COL_SEC = 36;
@@ -497,8 +499,8 @@ const TRACK_PAD = 3, COL_W = 54, COL_CAR = 12, COL_DOT = 29, COL_SEC = 36;
 function initState(){
   return {
     screen:0,
-    // 預設一台等加速度的車：一開機就能看到 x-t 拋物線、v-t 斜直線、軌跡點 1:3:5
-    cars:[{ id:'A', x0:0, v0:0, a:2, visible:true }],
+    // 三個參數都從 0 起跳（使用者指定）：一開機車是靜止的，由學生自己推滑桿讓它動起來
+    cars:[{ id:'A', x0:0, v0:0, a:0, visible:true }],
     focus:'A',            // 焦點車：切線／面積畫在誰身上
     open:'A',             // 手風琴：同時只有一張卡展開
     t:0, speed:1, autoPause:true,
@@ -879,7 +881,7 @@ function fmt(n, d){
 function carLabel(car){
   return '<i>x</i><sub>0</sub> ' + fmt(car.x0, 0) +
          ' · <i>v</i><sub>0</sub> ' + fmt(car.v0, 0) +
-         ' · <i>a</i> ' + fmt(car.a, 1);
+         ' · <i>a</i> ' + fmt(car.a, PARAM.a.dec);
 }
 
 function sliderHtml(car, key){
@@ -960,7 +962,7 @@ function renderTrackLabels(){
 function renderAtLegend(){
   document.getElementById('atLegend').innerHTML = state.cars
     .filter(c => c.visible)
-    .map(c => '<span class="it"><span class="sw" style="background:' + CAR_COLOR[c.id].line + '"></span>' + c.id + '車 ' + fmt(c.a, 1) + '</span>')
+    .map(c => '<span class="it"><span class="sw" style="background:' + CAR_COLOR[c.id].line + '"></span>' + c.id + '車 ' + fmt(c.a, PARAM.a.dec) + '</span>')
     .join('');
 }
 
