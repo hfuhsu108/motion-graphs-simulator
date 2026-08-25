@@ -22,15 +22,16 @@
   --c-bd-ctl:#CFD5DD;
   --c-text:#1C2433;
   --c-text-2:#445062;
-  --c-text-3:#7A8496;
-  --c-ok:#2F9E63;
+  --c-text-3:#67717F;
+  --c-ok:#24794C;
   --c-warn:#D64545;
   --c-track-bg:#445062;
   --c-slider-bg:#D3D9E1;
   /* 版面固定值：三張圖的繪圖區左邊界一律 290＝48（縱軸標）+10+222（軌道）+10。
      三圖左右邊緣嚴格對齊就靠這一條，變窄時只壓縮繪圖區寬度（設計稿 B 標註）。 */
-  --plot-left:290px;
-  --track-w:222px;
+  --u:1;   /* UI 等比放大係數，由 JS 依裝置實體像素設定，見 uiScale() */
+  --plot-left:calc(290px * var(--u));
+  --track-w:calc(222px * var(--u));
 }
 
 /* ═══ 2. base：字體、上下標、觸控（DEV_SPEC 第 3、4、5 節） ═══ */
@@ -51,7 +52,14 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .app{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 button,label.check,label.switch,input[type="range"]{touch-action:manipulation}
 canvas,input[type="range"]{touch-action:none}
+/* 但車輛列表裡的參數滑桿要放行垂直捲動：整支滑桿佔滿卡片寬 44px 高，
+   若吃掉捲動，學生想捲列表時手指一落在滑桿上就會直接改掉 x0/v0/a */
+.cars-list input[type="range"]{touch-action:pan-y}
 canvas{display:block}
+/* 觸控裝置沒有 hover，且 tap-highlight 已關掉 → 按下必須自己給回饋，
+   否則眼睛鈕、焦點這類視覺變化不明顯的操作會被學生連點 */
+button:active,label.check:active,label.switch:active,.navtab:active,.at-bar:active{opacity:.55}
+.round-btn:active,.btn-add:active{background:var(--c-primary-soft);border-color:var(--c-primary);opacity:1}
 
 /* ═══ 3. 版面：Header / 兩欄 / 抽屜 / 導覽列（設計稿 A、B、C） ═══ */
 .app{
@@ -60,27 +68,26 @@ canvas{display:block}
   display:flex;flex-direction:column;background:var(--c-bg);
 }
 .topbar{height:50px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;background:var(--c-surface);border-bottom:1px solid var(--c-bd)}
-.logo{width:28px;height:28px;flex:none;border-radius:7px;background:var(--c-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px}
-.title{font-size:17px;font-weight:700}
+.logo{width:28px;height:28px;flex:none;border-radius:7px;background:var(--c-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:calc(14px * var(--u))}
+.title{font-size:calc(17px * var(--u));font-weight:700}
 .topbar .actions{margin-left:auto;display:flex}
 /* 視覺維持規範的 34px，外層撐到 44×44 命中區（稿 G） */
 .icon-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--c-text-2)}
-.icon-btn i{width:34px;height:34px;border-radius:8px;border:1px solid #D7DBE2;background:var(--c-surface);display:flex;align-items:center;justify-content:center;font-size:15px}
+.icon-btn i{width:34px;height:34px;border-radius:8px;border:1px solid #D7DBE2;background:var(--c-surface);display:flex;align-items:center;justify-content:center;font-size:calc(15px * var(--u))}
 
 main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 .screen{display:none;height:100%}
-#screen0.active{display:grid;grid-template-columns:302px 1fr;gap:12px;min-height:0}
-#screen1.active{display:flex;align-items:center;justify-content:center;padding-bottom:12px}
-/* 佔位頁沒有可播放的東西 → 整條抽屜不出現，不留按了沒反應的控制項（稿 F） */
-.app[data-screen="1"] .drawer{display:none}
+#screen0.active,#screen1.active{display:grid;grid-template-columns:calc(302px * var(--u)) 1fr;gap:12px;min-height:0}
+/* 抽屜兩頁共用一條，只有分頁專屬的控制項互相替換（車子＝每秒自動暫停，打點＝頻率與每次打點暫停） */
+.app[data-screen="0"] .only-tk,.app[data-screen="1"] .only-car{display:none}
 
 /* ── 左欄 ── */
 .settings{display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0}
 .card{background:var(--c-surface);border:1px solid var(--c-bd);border-radius:10px}
 .cars-card{flex:1;min-height:0;padding:12px;display:flex;flex-direction:column;gap:8px}
 .cars-head{flex:none;display:flex;align-items:baseline;justify-content:space-between}
-.cars-head .t{font-size:13px;font-weight:700}
-.cars-head .n{font-size:12px;color:var(--c-text-3)}
+.cars-head .t{font-size:calc(13px * var(--u));font-weight:700}
+.cars-head .n{font-size:calc(12px * var(--u));color:var(--c-text-3)}
 .cars-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:7px}
 
 /* 車輛卡：焦點＝2px 主色框 ＋ 主色淡底標題列 ＋ 文字徽章（三重冗餘，色弱不靠辨色也能分辨） */
@@ -91,24 +98,24 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 .carcard.open .car-head{height:44px}
 .carcard.focus .car-head{background:var(--c-primary-soft)}
 .car-bar{width:6px;flex:none;align-self:stretch}
-.car-eye{width:36px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--c-primary);font-size:15px}
+.car-eye{width:calc(44px * var(--u));height:calc(44px * var(--u));flex:none;display:flex;align-items:center;justify-content:center;color:var(--c-primary);font-size:calc(15px * var(--u))}
 .carcard.off .car-eye{color:var(--c-text-3)}
-.car-name{display:flex;flex-direction:column;gap:2px;min-width:0;flex:none}
-.car-name .nm{font-size:13px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.car-name{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
+.car-name .nm{font-size:calc(13px * var(--u));font-weight:700;white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:6px}
 .carcard.off .car-name .nm{color:var(--c-text-3)}
 .car-name .nm .off-tag{font-weight:400}
-.car-name .sum{font-size:12px;color:var(--c-text-3);white-space:nowrap}
+.car-name .sum{font-size:calc(12px * var(--u));color:var(--c-text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .carcard.focus:not(.open) .car-name .sum{color:var(--c-text-2)}
-.carcard.off .car-name .sum{color:#9AA3B2}
+.carcard.off .car-name .sum{color:var(--c-text-3)}
 .carcard.open .car-name .sum{display:none}
-.badge-focus{flex:none;display:flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:11px;background:var(--c-primary);color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
-.badge-focus i{font-size:11px}
+.badge-focus{flex:none;display:flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:11px;background:var(--c-primary);color:#fff;font-size:calc(12px * var(--u));font-weight:700;white-space:nowrap}
+.badge-focus i{font-size:calc(11px * var(--u))}
 .carcard:not(.open) .badge-focus,.carcard.open .mini-focus{display:none}
-.mini-focus{font-size:11px;color:var(--c-primary)}
+.mini-focus{font-size:calc(11px * var(--u));color:var(--c-primary)}
 .carcard:not(.focus) .mini-focus{display:none}
-.car-btns{margin-left:auto;display:flex;align-items:center;gap:2px;flex:none}
+.car-btns{margin-left:auto;display:flex;align-items:center;gap:calc(4px * var(--u));flex:none}
 /* 稿的卡內鈕是 30px，觸控目標不足 → 視覺不變、容器撐到 36×44（DEV_SPEC 鐵律 6） */
-.car-btns button{width:36px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--c-text-2);font-size:13px}
+.car-btns button{width:calc(44px * var(--u));height:calc(44px * var(--u));display:flex;align-items:center;justify-content:center;color:var(--c-text-2);font-size:calc(13px * var(--u))}
 .car-btns .btn-del{color:var(--c-text-3)}
 .car-btns button:disabled{color:var(--c-bd-ctl);cursor:default}
 .car-body{padding:8px 10px;display:flex;flex-direction:column;gap:8px}
@@ -116,59 +123,70 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 .hr{height:1px;background:var(--c-bd);flex:none}
 
 /* 達 4 台上限時「禁用而非隱藏」：學生才知道這個規則存在（稿 E） */
-.btn-add{flex:none;height:44px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-primary);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-add{flex:none;height:44px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-primary);font-size:calc(13px * var(--u));font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-add:disabled{border-color:var(--c-bd);background:var(--c-bg);color:var(--c-text-3);cursor:default}
 
 .layers-card{flex:none;padding:11px 12px;display:flex;flex-direction:column;gap:6px}
-.layers-card .t{font-size:13px;font-weight:700}
+.layers-card .t{font-size:calc(13px * var(--u));font-weight:700}
 .layers-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
-.layers-note{font-size:12px;color:var(--c-text-3);line-height:1.5}
+.layers-note{font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.5}
 
 /* ── 模擬卡：軌道 ＋ x-t／v-t／a-t ── */
 .stage-card{position:relative;background:var(--c-surface);border:1px solid var(--c-bd);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0;overflow:hidden}
 /* 兩層 canvas 疊在整張卡上：靜態背景只在範圍或尺寸變更時重繪（DEV_SPEC 6.4） */
 .stage-card canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
-.block-head{flex:none;height:18px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c-text-3)}
-.block-head .legend{margin-left:auto;display:flex;align-items:center;gap:5px;font-weight:700;color:var(--c-ok)}
+.block-head{flex:none;height:calc(18px * var(--u));display:flex;align-items:center;gap:calc(10px * var(--u));font-size:calc(12px * var(--u));color:var(--c-text-3)}
+.block-head .legend{margin-left:auto;display:flex;align-items:center;gap:5px;font-weight:700;color:var(--c-text-2)}
 .block-head .legend .dash{width:16px;height:0;border-top:2px dashed var(--c-cursor,#1C2433)}
-.block-head .legend .sw{width:12px;height:9px;background:rgba(47,158,99,.22);border:1px solid var(--c-ok)}
+/* 兩個小方塊的顏色由 JS 跟著焦點車設定：實心＝正向面積，斜線＝負向 */
+.block-head .legend .sw,.block-head .legend .sw-neg{flex:none;width:calc(11px * var(--u));height:calc(9px * var(--u));border:1px solid transparent}
+.block-head .legend .sw-neg{margin-left:calc(2px * var(--u))}
 /* x-t 與 v-t 的高度比約 2:1（各自的 18px 標題列不計入比例，故實際略高於 2:1） */
 .track-block{flex:2 1 0;min-height:0;display:flex;flex-direction:column}
-.track-row{flex:1;min-height:0;display:flex;gap:10px}
-.yaxis{width:48px;flex:none;position:relative;font-size:12px;color:var(--c-text-3)}
+.track-row{flex:1;min-height:0;display:flex;gap:calc(10px * var(--u))}
+.yaxis{width:calc(48px * var(--u));flex:none;position:relative;font-size:calc(12px * var(--u));color:var(--c-text-3)}
 .yaxis span{position:absolute;right:0;white-space:nowrap;transform:translateY(-50%)}
 .yaxis span.major{font-weight:700;color:var(--c-text-2)}
 .track{width:var(--track-w);flex:none;position:relative;background:var(--c-track-bg);border-radius:4px;overflow:hidden}
-.track .col-label{position:absolute;top:2px;width:50px;text-align:center;font-size:11px;font-weight:700}
-.plot{flex:1;min-width:0;position:relative;border-left:2px solid var(--c-bd-ctl)}
-.plot .axname{position:absolute;left:6px;top:2px;font-size:12px;font-weight:700;color:var(--c-text-2)}
+.track .col-label{position:absolute;top:calc(2px * var(--u));width:calc(54px * var(--u));text-align:center;font-size:calc(11px * var(--u));font-weight:700}
+/* 軌道右下角的放大鏡。視覺只給 30px 才不壓住 D 欄的軌跡點，
+   熱區另外用 ::before 撐到 44px（DESIGN_SPEC 鐵律 6 的觸控目標下限） */
+.track-zoom{position:absolute;right:calc(4px * var(--u));bottom:calc(4px * var(--u));z-index:4;
+  width:calc(30px * var(--u));height:calc(30px * var(--u));border-radius:8px;
+  background:rgba(255,255,255,.9);border:1px solid var(--c-bd-ctl);color:var(--c-text-2);
+  display:flex;align-items:center;justify-content:center;font-size:calc(13px * var(--u))}
+.track-zoom::before{content:'';position:absolute;left:50%;top:50%;
+  width:calc(44px * var(--u));height:calc(44px * var(--u));transform:translate(-50%,-50%)}
+.track-zoom:active{background:#E8EBF0}
+.plot{flex:1;min-width:0;position:relative;border-left:calc(2px * var(--u)) solid var(--c-bd-ctl)}
+.plot .axname{position:absolute;left:calc(6px * var(--u));top:calc(2px * var(--u));font-size:calc(12px * var(--u));font-weight:700;color:var(--c-text-2)}
 /* x-t 的縱軸數字疊在繪圖區左緣內側：軌道左邊那組離 x-t 圖隔了 222px，讀圖時視線要跨過整條軌道 */
-#plotXt .axname{left:auto;right:8px}
+.plot .axname{left:auto;right:calc(8px * var(--u))}
 /* z-index 要壓過 canvas（canvas 是 2），否則曲線經過左緣時會蓋掉刻度數字 */
-.yaxis-in{position:absolute;left:0;top:0;bottom:0;width:46px;z-index:3;pointer-events:none;font-size:11px;color:var(--c-text-3)}
-.yaxis-in span{position:absolute;left:3px;transform:translateY(-50%);white-space:nowrap;
-  background:rgba(255,255,255,.82);padding:0 3px;border-radius:3px}
+.yaxis-in{position:absolute;left:0;top:0;bottom:0;width:calc(46px * var(--u));z-index:3;pointer-events:none;font-size:calc(11px * var(--u));color:var(--c-text-3)}
+.yaxis-in span{position:absolute;left:calc(3px * var(--u));transform:translateY(-50%);white-space:nowrap;
+  background:rgba(255,255,255,.82);padding:0 calc(3px * var(--u));border-radius:3px}
 .yaxis-in span.major{font-weight:700;color:var(--c-text-2)}
 
 .vt-block{flex:1 1 0;min-height:100px;display:flex;flex-direction:column}
-.vt-head,.at-head{padding-left:var(--plot-left)}
+.track-head,.vt-head,.at-head{padding-left:var(--plot-left)}
 .vt-row,.at-row{flex:1;min-height:0;display:flex}
-.yaxis-v{width:var(--plot-left);flex:none;position:relative;font-size:12px;color:var(--c-text-3)}
+.yaxis-v{width:var(--plot-left);flex:none;position:relative;font-size:calc(12px * var(--u));color:var(--c-text-3)}
 .yaxis-v span{position:absolute;right:6px;white-space:nowrap;transform:translateY(-50%)}
 .yaxis-v span.major{font-weight:700;color:var(--c-text-2)}
-.taxis{flex:none;height:14px;display:flex;padding-left:calc(var(--plot-left) + 2px);font-size:12px;color:var(--c-text-3);line-height:1.2}
+.taxis{flex:none;height:calc(14px * var(--u));display:flex;padding-left:calc(var(--plot-left) + 2px * var(--u));font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.2}
 .taxis span{flex:1}
 .taxis span:last-child{flex:none}
 
 /* a-t：預設摺疊成 40px 摘要條（各車 a 值仍直接可讀），可點開成完整圖表 */
 .at-block{flex:none;display:flex;flex-direction:column}
-.at-bar{flex:none;height:40px;width:100%;border:1px solid var(--c-bd);border-radius:10px;background:var(--c-bg);display:flex;align-items:center;gap:9px;padding:0 8px 0 12px}
-.at-bar .t{font-size:13px;font-weight:700;color:var(--c-text-2);white-space:nowrap;flex:none}
-.at-bar .sub{font-size:12px;color:var(--c-text-3);white-space:nowrap;flex:none;overflow:hidden}
-.at-legend{margin-left:auto;flex:none;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c-text-2);white-space:nowrap}
+.at-bar{flex:none;height:calc(44px * var(--u));width:100%;border:1px solid var(--c-bd);border-radius:10px;background:var(--c-bg);display:flex;align-items:center;gap:9px;padding:0 8px 0 12px}
+.at-bar .t{font-size:calc(13px * var(--u));font-weight:700;color:var(--c-text-2);white-space:nowrap;flex:none}
+.at-bar .sub{font-size:calc(12px * var(--u));color:var(--c-text-3);white-space:nowrap;flex:none;overflow:hidden}
+.at-legend{margin-left:auto;flex:none;display:flex;align-items:center;gap:10px;font-size:calc(12px * var(--u));color:var(--c-text-2);white-space:nowrap}
 .at-legend .it{display:flex;align-items:center;gap:4px}
 .at-legend .sw{width:14px;height:3px;flex:none}
-.at-bar .caret{width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--c-text-2);font-size:13px}
+.at-bar .caret{width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--c-text-2);font-size:calc(13px * var(--u))}
 .at-open{display:none;flex:1;min-height:0;flex-direction:column}
 /* a-t 展開時比例為 2:1:1，x-t 對 v-t 仍維持 2:1 */
 .stage-card.at-expanded .at-block{flex:1 1 0;min-height:0}
@@ -179,11 +197,11 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 
 /* ═══ 4. 元件：滑桿、核取、toggle、抽屜、導覽（DESIGN_SPEC 第 4 節 ＋ 稿 E） ═══ */
 .sliderbox{display:flex;flex-direction:column;gap:3px}
-.sliderbox .head{display:flex;align-items:baseline;justify-content:space-between;font-size:13px;line-height:1.3}
+.sliderbox .head{display:flex;align-items:baseline;justify-content:space-between;font-size:calc(13px * var(--u));line-height:1.3}
 .sliderbox .head .name{font-weight:700;color:var(--c-text-2)}
 .sliderbox .head .val{font-weight:700}
-.sliderbox .head .unit{font-size:12px;font-weight:400;color:var(--c-text-3)}
-.sliderbox .minmax{display:flex;justify-content:space-between;font-size:12px;color:var(--c-text-3);line-height:1}
+.sliderbox .head .unit{font-size:calc(12px * var(--u));font-weight:400;color:var(--c-text-3)}
+.sliderbox .minmax{display:flex;justify-content:space-between;font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1}
 /* 軌 7px、把手 24px；命中高度 44px，用負 margin 讓佔位回到 24（觸控與版面兩者兼顧）。
    已填段從「零點」長出而非從左端長出——負值參數才讀得對（稿 E）。 */
 input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:44px;margin:-10px 0;background:transparent;display:block}
@@ -200,13 +218,13 @@ input[type="range"]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;b
 .range-lg::-moz-range-track{height:10px;border-radius:5px}
 .range-lg::-moz-range-thumb{width:26px;height:26px;border-width:3px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 
-label.check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--c-text-2);height:44px;margin:-5px 0}
+label.check{display:flex;align-items:center;gap:8px;font-size:calc(13px * var(--u));color:var(--c-text-2);height:calc(44px * var(--u));margin:0}
 label.check input{position:absolute;opacity:0;width:0;height:0}
-label.check .box{width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid var(--c-bd-ctl);background:var(--c-surface);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px}
+label.check .box{width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid var(--c-bd-ctl);background:var(--c-surface);display:flex;align-items:center;justify-content:center;color:#fff;font-size:calc(12px * var(--u))}
 label.check input:checked+.box{background:var(--c-primary);border-color:var(--c-primary)}
 label.check .box i{visibility:hidden}
 label.check input:checked+.box i{visibility:visible}
-label.switch{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c-text-3);height:24px}
+label.switch{display:flex;align-items:center;gap:8px;font-size:calc(12px * var(--u));color:var(--c-text-3);height:calc(44px * var(--u))}
 label.switch input{position:absolute;opacity:0;width:0;height:0}
 label.switch .track-sw{width:52px;height:30px;flex:none;border-radius:15px;background:var(--c-bd-ctl);position:relative;transition:background .15s}
 label.switch .track-sw::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}
@@ -217,58 +235,132 @@ label.switch input:checked+.track-sw::after{left:25px}
 .drawer .handle{width:44px;height:5px;border-radius:3px;background:#D7DBE2;margin:0 auto 8px}
 .drawer-row{display:flex;align-items:flex-end;gap:20px}
 .playbtns{display:flex;gap:8px;flex:none;padding-bottom:9px}
-.round-btn{width:44px;height:44px;border-radius:50%;background:var(--c-bg);border:1px solid var(--c-bd-ctl);color:var(--c-text-2);display:flex;align-items:center;justify-content:center;font-size:15px}
-.round-btn.primary{background:var(--c-primary);border-color:var(--c-primary);color:#fff;font-size:16px}
+.round-btn{width:calc(44px * var(--u));height:calc(44px * var(--u));border-radius:50%;background:var(--c-bg);border:1px solid var(--c-bd-ctl);color:var(--c-text-2);display:flex;align-items:center;justify-content:center;font-size:calc(15px * var(--u))}
+.round-btn.primary{background:var(--c-primary);border-color:var(--c-primary);color:#fff;font-size:calc(16px * var(--u))}
 .round-btn:disabled{background:var(--c-bg);border-color:var(--c-bd);color:var(--c-bd-ctl);cursor:default}
 .speedbox{flex:none;width:190px;padding-bottom:6px}
-.speedbox .head{display:flex;align-items:baseline;justify-content:space-between;font-size:13px;margin-bottom:3px}
+.speedbox .head{display:flex;align-items:baseline;justify-content:space-between;font-size:calc(13px * var(--u));margin-bottom:3px}
 .speedbox .head .name{font-weight:700;color:var(--c-text-2)}
 .speedbox .head .val{font-weight:700}
 .speed-chips{display:none;gap:6px}
-.speed-chips button{height:44px;width:46px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-text-2);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.speed-chips button{height:44px;width:46px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-text-2);font-size:calc(13px * var(--u));font-weight:700;display:flex;align-items:center;justify-content:center}
 .speed-chips button[aria-pressed="true"]{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
 .autopause{flex:none;padding-bottom:6px;display:flex;flex-direction:column;gap:3px}
-.autopause .name{font-size:13px;font-weight:700;color:var(--c-text-2);white-space:nowrap}
+.autopause .name{font-size:calc(13px * var(--u));font-weight:700;color:var(--c-text-2);white-space:nowrap}
 .scrubbox{flex:1;min-width:0}
-.scrubbox .head{display:flex;align-items:baseline;gap:8px;font-size:13px;margin-bottom:3px}
+.scrubbox .head{display:flex;align-items:baseline;gap:8px;font-size:calc(13px * var(--u));margin-bottom:3px}
 .scrubbox .head .name{font-weight:700;color:var(--c-text-2)}
-.scrubbox .head .hint{color:var(--c-text-3);font-size:12px}
-.scrubbox .head .now{margin-left:auto;font-weight:700;color:var(--c-primary);font-size:15px;white-space:nowrap}
+.scrubbox .head .hint{color:var(--c-text-3);font-size:calc(12px * var(--u))}
+.scrubbox .head .now{margin-left:auto;font-weight:700;color:var(--c-primary);font-size:calc(15px * var(--u));white-space:nowrap}
 .scrub-wrap{position:relative;height:26px;display:flex;align-items:center}
 .scrub-wrap input{position:relative;z-index:2}
 .scrub-ticks{position:absolute;inset:0;pointer-events:none;z-index:1}
-.scrub-ticks i{position:absolute;top:50%;transform:translate(-50%,-50%);width:2px;height:16px;background:#BFC7D1}
+.scrub-ticks i{position:absolute;top:50%;transform:translate(-50%,-50%);width:2px;height:16px;background:#A2ABB8}
 .scrub-ticks i.passed{background:rgba(255,255,255,.7)}
-.scrubbox .marks{display:flex;justify-content:space-between;font-size:12px;color:var(--c-text-3);line-height:1.1}
+/* 出界之後的時段：斜線底表示「這段跑不到」，不是單純的灰色軌道 */
+.scrub-blocked{position:absolute;top:50%;right:0;transform:translateY(-50%);height:14px;z-index:3;
+  pointer-events:none;border-radius:0 7px 7px 0;display:none;
+  background:repeating-linear-gradient(135deg,#DDE1E7 0 4px,#EEF0F3 4px 8px)}
+.scrub-blocked.on{display:block}
+.scrubbox .marks{display:flex;justify-content:space-between;font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.1}
 
 .bottomnav{height:56px;flex:none;display:flex;align-items:center;padding:0 18px;background:var(--c-nav);gap:6px}
 /* 分頁視覺 40px，上下 padding 撐滿導覽列 → 實際命中 56px（稿 E） */
-.navtab{white-space:nowrap;flex:none;height:56px;padding:0 18px;color:var(--c-nav-idle);font-size:13.5px;display:flex;align-items:center;gap:8px}
+.navtab{white-space:nowrap;flex:none;height:56px;padding:0 18px;color:var(--c-nav-idle);font-size:calc(13.5px * var(--u));display:flex;align-items:center;gap:8px}
 .navtab span{display:flex;align-items:center;gap:8px;height:40px;padding:0 18px;margin:0 -18px;border-radius:8px}
 .navtab[aria-selected="true"] span{background:var(--c-primary);color:#fff;font-weight:700}
 
-/* 佔位頁：刻意的預告，不是壞掉的空白頁（稿 F） */
-.promo{width:620px;max-width:100%;background:var(--c-surface);border:1px solid var(--c-bd);border-radius:14px;padding:34px 38px;display:flex;flex-direction:column;align-items:center;gap:16px}
-.promo .tag{height:26px;padding:0 12px;border-radius:13px;background:var(--c-primary-soft);border:1px solid var(--c-primary-soft-bd);color:var(--c-primary);font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px}
-.promo .tag i{font-size:11px}
-.promo .ico{width:72px;height:72px;border-radius:20px;background:var(--c-primary-soft);border:1px solid var(--c-primary-soft-bd);display:flex;align-items:center;justify-content:center;color:var(--c-primary);font-size:30px}
-.promo .h{font-size:22px;font-weight:700;text-align:center}
-.promo .p{font-size:14px;color:var(--c-text-2);line-height:1.7;text-align:center;max-width:460px}
-.promo .line{width:100%;height:1px;background:var(--c-bd);margin:2px 0}
-.promo .list{width:100%;display:flex;flex-direction:column;gap:10px}
-.promo .list div{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--c-text-2)}
-.promo .list i{color:var(--c-ok);font-size:15px;flex:none}
-.promo .btns{width:100%;display:flex;gap:10px;margin-top:6px}
-.promo .btns button{height:44px;border-radius:10px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
-.promo .btns .b1{flex:1;background:var(--c-primary);color:#fff}
-.promo .btns .b2{flex:none;padding:0 18px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-text-2)}
+/* ── 打點計時器分頁：左欄紙帶清單、下拉選單、紙帶區、抽屜的打點頻率 ── */
+.scene-card{flex:1;min-height:0;padding:12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+.scene-card .t{font-size:calc(13px * var(--u));font-weight:700;flex:none}
+.tape-list{flex:none;display:flex;flex-direction:column;gap:7px}
+/* 每條紙帶只需要一個情境下拉，卡片因此壓成一行，不做車輛卡那種手風琴 */
+.tapecard{flex:none;height:56px;display:flex;align-items:center;gap:calc(4px * var(--u));
+  border:1px solid var(--c-bd);border-radius:10px;background:var(--c-surface);padding-right:4px}
+.tapecard.focus{border:2px solid var(--c-primary);background:var(--c-primary-soft)}
+.tapecard.off{background:var(--c-bg)}
+.tape-bar{width:6px;flex:none;align-self:stretch;border-radius:9px 0 0 9px}
+.tape-eye,.tape-del{width:calc(44px * var(--u));height:calc(44px * var(--u));flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:calc(14px * var(--u))}
+.tape-eye{color:var(--c-primary)}
+.tape-del{color:var(--c-text-3);font-size:calc(13px * var(--u))}
+.tapecard.off .tape-eye{color:var(--c-text-3)}
+.tape-nm{flex:none;font-size:calc(13px * var(--u));font-weight:700;white-space:nowrap}
+.tapecard.off .tape-nm{color:var(--c-text-3)}
+/* 只有一條紙帶時沒有眼睛鈕，字母會貼著色條 → 補一段間距 */
+.tape-bar + .tape-nm{margin-left:calc(8px * var(--u))}
+.tape-del:disabled{color:var(--c-bd-ctl);cursor:default}
+/* 寬螢幕：只讓紙帶清單捲動，模式膠囊、新增鈕、頻率一律固定看得到。
+   直向的高度連固定列都放不下，那裡維持整張卡可捲（見 5. 響應式） */
+@media (min-width:900px){
+  #screen1 .scene-card{overflow:hidden}
+  #screen1 .tape-list{flex:1 1 auto;min-height:56px;overflow-y:auto}
+}
+/* 操作模式：兩個互斥選項用膠囊（DESIGN_SPEC「2–4 個短選項→膠囊」） */
+.mode-chips{display:flex;gap:8px;flex:none}
+.mode-chips button{flex:1;height:44px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);
+  color:var(--c-text-2);font-size:calc(13px * var(--u));font-weight:700;display:flex;align-items:center;justify-content:center}
+.mode-chips button[aria-pressed="true"]{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
+.freq-row{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px}
+
+/* 下拉選單（DESIGN_SPEC 第 4 節）。規範的選項列高是 42px，這裡用 44——
+   列表項目的視覺尺寸就是它的命中區，42 會違反鐵律 6，而加高列表不會撐壞版面 */
+.dd{position:relative;flex:1;min-width:0}
+.dd-btn{width:100%;height:44px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);
+  color:var(--c-text);font-size:calc(13px * var(--u));font-weight:700;display:flex;align-items:center;gap:6px;padding:0 10px}
+.dd-btn .v{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-btn i{flex:none;font-size:calc(11px * var(--u));color:var(--c-text-3)}
+.dd-btn:disabled{background:var(--c-bg);border-color:var(--c-bd);color:var(--c-text-3);cursor:default}
+.dd.open .dd-btn{border-color:var(--c-primary);box-shadow:0 0 0 3px rgba(42,111,219,.15)}
+.dd-list{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;padding:4px;
+  background:var(--c-surface);border:1px solid var(--c-bd-ctl);border-radius:10px;box-shadow:0 6px 18px rgba(28,36,51,.14)}
+.dd.open .dd-list{display:block}
+.dd-list button{width:100%;height:44px;border-radius:8px;padding:0 10px;display:flex;align-items:center;
+  font-size:calc(13px * var(--u));color:var(--c-text-2)}
+.dd-list button[aria-selected="true"]{background:var(--c-primary-soft);color:var(--c-primary);font-weight:700}
+
+/* 放大檢視的旋轉鈕。純弧形箭頭會被讀成「復原」，所以把角度本身寫成標籤 */
+.zrot{height:44px;padding:0 10px;flex:none;display:flex;align-items:center;justify-content:center;gap:6px;
+  color:var(--c-text-2);font-size:calc(13px * var(--u));font-weight:700;
+  border:1px solid var(--c-bd-ctl);border-radius:8px}
+.zrot i{font-size:calc(14px * var(--u))}
+.zrot:active{background:#E8EBF0}
+/* v-t 繪圖區可以直接點點讀速度：要擋掉 iOS 的雙擊縮放，游標也要看得出可點 */
+#tkPlotVt{touch-action:manipulation;cursor:pointer}
+.zbody-tape{align-items:stretch}
+.zbody-tape canvas{flex:1;min-width:0;cursor:pointer}
+/* 紙帶區底色是「桌面」，白色紙帶本身畫在 canvas 上（會隨車變長，不是固定的一塊） */
+.tape{width:var(--track-w);flex:none;position:relative;background:#EDF0F4;border-radius:4px;overflow:hidden;touch-action:none}
+.freq-chips{display:flex;gap:6px;flex:none}
+.freq-chips button{width:calc(50px * var(--u));height:44px;border-radius:10px;border:1px solid var(--c-bd-ctl);
+  background:var(--c-surface);color:var(--c-text-2);font-size:calc(13px * var(--u));font-weight:700;
+  display:flex;align-items:center;justify-content:center}
+.freq-chips button[aria-pressed="true"]{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
 
 .modal{position:fixed;inset:0;background:rgba(28,36,51,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
 .modal.open{display:flex}
 .modal .box{background:var(--c-surface);border-radius:14px;padding:24px 26px;max-width:540px;max-height:80%;overflow-y:auto;user-select:text;-webkit-user-select:text}
-.modal h3{font-size:17px;margin:0 0 10px}
-.modal p{font-size:13.5px;color:var(--c-text-2);margin:0 0 10px;line-height:1.75}
-.modal .close{margin-left:auto;display:block;height:40px;padding:0 18px;border-radius:10px;background:var(--c-primary);color:#fff;font-size:13px;font-weight:700}
+.modal h3{font-size:calc(17px * var(--u));margin:0 0 10px}
+.modal p{font-size:calc(13.5px * var(--u));color:var(--c-text-2);margin:0 0 10px;line-height:1.75}
+.modal .close{margin-left:auto;display:block;height:calc(44px * var(--u));padding:0 18px;border-radius:10px;background:var(--c-primary);color:#fff;font-size:calc(13px * var(--u));font-weight:700}
+
+/* 軌道放大檢視：整個視窗高度都給軌道，每秒點的縱向間距才拉得開到能互相比較 */
+.zoom-modal .zbox{background:var(--c-surface);border-radius:14px;padding:calc(14px * var(--u));
+  width:100%;height:100%;display:flex;flex-direction:column;gap:calc(10px * var(--u))}
+.zhead{flex:none;display:flex;align-items:center;gap:calc(12px * var(--u))}
+.zhead .zt{font-size:calc(15px * var(--u));font-weight:700}
+.zhead .zsub{font-size:calc(12.5px * var(--u));color:var(--c-text-3)}
+.zhead .ztime{margin-left:auto;font-size:calc(13px * var(--u));font-weight:700;color:var(--c-text-2)}
+.zclose{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;
+  color:var(--c-text-2);font-size:calc(17px * var(--u))}
+.zclose:active{color:var(--c-primary)}
+.zbody{flex:1;min-height:0;display:flex;gap:calc(10px * var(--u));justify-content:center}
+.zyaxis{width:calc(56px * var(--u));flex:none;position:relative;font-size:calc(13px * var(--u));color:var(--c-text-3)}
+.zyaxis span{position:absolute;right:0;white-space:nowrap;transform:translateY(-50%)}
+.zyaxis span.major{font-weight:700;color:var(--c-text-2)}
+.ztrack{flex:none;position:relative;background:var(--c-track-bg);border-radius:6px;overflow:hidden}
+.ztrack canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.ztrack .col-label{position:absolute;text-align:center;font-weight:700}
 
 /* hover 一律包在 (hover:hover)，否則 iPad 點一下會殘留 hover 不消失 */
 @media (hover:hover){
@@ -279,21 +371,37 @@ label.switch input:checked+.track-sw::after{left:25px}
   .car-btns .btn-del:not(:disabled):hover{color:var(--c-warn)}
   .navtab[aria-selected="false"]:hover{color:#fff}
   .at-bar:hover .caret{color:var(--c-primary)}
-  .speed-chips button[aria-pressed="false"]:hover{border-color:var(--c-primary)}
+  .speed-chips button[aria-pressed="false"]:hover,
+  .freq-chips button[aria-pressed="false"]:hover,
+  .mode-chips button[aria-pressed="false"]:hover,
+  .zrot:hover,
+  .dd-btn:not(:disabled):hover{border-color:var(--c-primary)}
+  .dd-list button[aria-selected="false"]:hover{background:var(--c-bg)}
+  .tape-eye:hover{color:var(--c-primary)}
+  .tape-del:not(:disabled):hover{color:var(--c-warn)}
+  .zrot:hover{color:var(--c-primary)}
 }
 
 /* ═══ 5. 響應式：<900px（涵蓋所有 iPad 直向 768/820/834）改上下堆疊（設計稿 C） ═══ */
 @media (min-width:900px) and (max-width:1100px){
-  #screen0.active{grid-template-columns:262px 1fr}
+  #screen0.active,#screen1.active{grid-template-columns:calc(262px * var(--u)) 1fr}
 }
 @media (max-width:899px){
-  #screen0.active{display:flex;flex-direction:column;gap:12px}
+  #screen0.active,#screen1.active{display:flex;flex-direction:column;gap:12px}
   .stage-card{flex:none;height:560px}
   .settings{flex:1;min-height:0;flex-direction:row;gap:12px}
-  .cars-card{flex:1;min-width:0}
+  .cars-card,.scene-card{flex:1;min-width:0}
   .layers-card{width:280px;flex:none;align-self:stretch}
   /* 抽屜改兩列：scrubber 獨佔整寬並固定在最下（稿 E 直向速度膠囊 ＋ 難題 3 的兩列排法）。
      稿 C 的抽屜是桌機版複製未改，直向照抄會讓 scrubber 只剩 ~186px，違反「要夠大夠好拖」。 */
+  /* 抽屜那組打點頻率已移除（2026-08-25 使用者指定只留左欄）。直向的設定卡原本只有
+     ~140px 高、整張可捲，頻率列排在最後面就要捲到底才看得到 → 把它釘在卡片底部，
+     紙帶清單照常捲動。上緣加一條陰影，捲動時內容才不會看起來黏在它上面。
+     釘住之後可視區又少 56px，紙帶清單會整個掉到摺線下 → 舞台在這一頁讓出 90px。
+     只改 #screen1，車子分頁的直向版面不動 */
+  #screen1 .stage-card{height:470px}
+  #screen1 .freq-row{position:sticky;bottom:0;z-index:5;background:var(--c-surface);
+    padding:6px 0;margin-top:-6px;box-shadow:0 -6px 8px -6px rgba(28,36,51,.18)}
   .drawer-row{flex-wrap:wrap;row-gap:12px}
   .speedbox{width:auto;padding-bottom:0}
   .speedbox .head,.speedbox input[type="range"]{display:none}
@@ -333,7 +441,7 @@ label.switch input:checked+.track-sw::after{left:25px}
             <label class="check"><input type="checkbox" id="chkArea"><span class="box"><i class="fa-solid fa-check"></i></span><span><i>v</i>-<i>t</i> 面積</span></label>
             <label class="check"><input type="checkbox" id="chkGuide"><span class="box"><i class="fa-solid fa-check"></i></span><span>參考線</span></label>
           </div>
-          <div class="layers-note">參考線把 <i>x</i>-<i>t</i> 圖上的點水平連回軌道上的車。每秒軌跡點與秒數一律顯示。</div>
+          <div class="layers-note">參考線把 <i>x</i>-<i>t</i> 圖上目前的點，水平連到軌道上的車。</div>
         </div>
       </section>
 
@@ -342,8 +450,8 @@ label.switch input:checked+.track-sw::after{left:25px}
         <canvas id="fgCanvas"></canvas>
 
         <div class="track-block">
-          <div class="block-head">
-            <span>垂直軌道 222px＝4 欄 × 50px（車→點→秒數）＋ <i>x</i>-<i>t</i> 圖｜共用同一縱軸</span>
+          <div class="block-head track-head">
+            <span>位置 <i>x</i> (m)</span>
             <span class="legend" id="tangentLegend"><span class="dash"></span>切線斜率 = <i>v</i> = <span id="tangentVal">0.0</span> m/s</span>
           </div>
           <div class="track-row">
@@ -358,11 +466,11 @@ label.switch input:checked+.track-sw::after{left:25px}
         <div class="vt-block">
           <div class="block-head vt-head">
             <span>速度 <i>v</i> (m/s)</span>
-            <span class="legend" id="areaLegend"><span class="sw"></span>面積 = 位移 = <span id="areaVal">0.0</span> m</span>
+            <span class="legend" id="areaLegend"><span class="sw"></span><span class="sw-neg"></span>位移合計 = <span id="areaVal">0.0</span> m</span>
           </div>
           <div class="vt-row">
             <div class="yaxis-v" id="yAxisV"></div>
-            <div class="plot" id="plotVt"><span class="axname"><i>v</i></span></div>
+            <div class="plot" id="plotVt"><span class="axname"><i>v</i></span><div class="yaxis-in" id="yAxisVIn"></div></div>
           </div>
         </div>
 
@@ -371,7 +479,7 @@ label.switch input:checked+.track-sw::after{left:25px}
         <div class="at-block" id="atBlock">
           <button class="at-bar" id="atBar" aria-expanded="false">
             <span class="t">加速度 <i>a</i>-<i>t</i> 圖</span>
-            <span class="sub">已摺疊（等加速度為水平線）</span>
+            <span class="sub">已摺疊</span>
             <span class="at-legend" id="atLegend"></span>
             <span class="caret"><i class="fa-solid fa-chevron-down" id="atCaret"></i></span>
           </button>
@@ -379,7 +487,7 @@ label.switch input:checked+.track-sw::after{left:25px}
             <div class="block-head at-head"><span>加速度 <i>a</i> (m/s<sup>2</sup>)</span></div>
             <div class="at-row">
               <div class="yaxis-v" id="yAxisA"></div>
-              <div class="plot" id="plotAt"><span class="axname"><i>a</i></span></div>
+              <div class="plot" id="plotAt"><span class="axname"><i>a</i></span><div class="yaxis-in" id="yAxisAIn"></div></div>
             </div>
             <div class="taxis" id="tAxisAt"></div>
           </div>
@@ -387,22 +495,88 @@ label.switch input:checked+.track-sw::after{left:25px}
       </div>
     </div>
 
-    <!-- ── 分頁 2：打點計時器（開發中預告頁） ── -->
+    <!-- ── 分頁 2：打點計時器 ──
+         版面與分頁 1 同構（左欄設定 ＋ 舞台卡），三張圖的結構刻意逐項對齊，
+         只有最左邊 222px 由「四欄軌道」換成「紙帶與台車」。 -->
     <div class="screen" id="screen1">
-      <div class="promo">
-        <div class="tag"><i class="fa-solid fa-hammer"></i>開發中 · 預計 2026 年秋</div>
-        <div class="ico"><i class="fa-solid fa-stopwatch"></i></div>
-        <div class="h">打點計時器模擬</div>
-        <div class="p">下一支要做的就是它：紙帶跟著車一起被拉過打點計時器，每 <b>1/60 秒</b>打一個點。你會看到「相等時距、點距逐次拉開」印在真實的紙帶上——和這一頁 <i>x</i>-<i>t</i> 圖上的每秒軌跡點是同一件事。</div>
-        <div class="line"></div>
-        <div class="list">
-          <div><i class="fa-solid fa-circle-check"></i>拉紙帶、量相鄰點距，自己算出每段的平均速度</div>
-          <div><i class="fa-solid fa-circle-check"></i>由點距反推 <i>v</i>-<i>t</i> 圖，驗證「斜率就是加速度」</div>
-          <div><i class="fa-solid fa-circle-check"></i>與「車子」分頁的同一組參數對照，兩種測量方式互相印證</div>
+
+      <section class="settings">
+        <div class="card scene-card">
+          <!-- 操作模式擺在最上面：它決定下面會不會出現多條紙帶，順序要與因果一致 -->
+          <div class="mode-chips" id="tkModeChips">
+            <button data-mode="scene" aria-pressed="true">自動拉紙</button>
+            <button data-mode="manual" aria-pressed="false">手動拉紙</button>
+          </div>
+          <div class="hr"></div>
+          <div class="cars-head"><span class="t">紙帶設定</span><span class="n" id="tkCount"></span></div>
+          <div class="tape-list" id="tkTapeList"></div>
+          <button class="btn-add" id="tkBtnAdd"><i class="fa-solid fa-plus"></i><span id="tkAddLabel">新增紙帶</span></button>
+          <div class="hr"></div>
+          <div class="freq-row">
+            <span class="t">打點頻率 (Hz)</span>
+            <div class="freq-chips tk-freq">
+              <button data-freq="0.5" aria-pressed="false">0.5</button>
+              <button data-freq="1" aria-pressed="true">1</button>
+              <button data-freq="2" aria-pressed="false">2</button>
+            </div>
+          </div>
         </div>
-        <div class="btns">
-          <button class="b1" id="btnBackToSim"><i class="fa-solid fa-arrow-left"></i>回到「車子」分頁</button>
-          <button class="b2" id="btnWhat"><i class="fa-solid fa-circle-question"></i>這個模擬要教什麼</button>
+        <div class="card layers-card">
+          <div class="t">顯示圖層</div>
+          <div class="layers-grid">
+            <label class="check"><input type="checkbox" id="tkChkTangent"><span class="box"><i class="fa-solid fa-check"></i></span><span><i>x</i>-<i>t</i> 切線</span></label>
+            <label class="check"><input type="checkbox" id="tkChkArea"><span class="box"><i class="fa-solid fa-check"></i></span><span><i>v</i>-<i>t</i> 面積</span></label>
+            <label class="check"><input type="checkbox" id="tkChkGuide"><span class="box"><i class="fa-solid fa-check"></i></span><span>參考線</span></label>
+          </div>
+        </div>
+      </section>
+
+      <div class="stage-card" id="tkStage">
+        <canvas id="tkBgCanvas"></canvas>
+        <canvas id="tkFgCanvas"></canvas>
+
+        <div class="track-block">
+          <div class="block-head track-head">
+            <span>位置 <i>x</i> (cm)</span>
+            <span class="legend" id="tkTangentLegend"><span class="dash"></span>切線斜率 = <i>v</i> = <span id="tkTangentVal">0.0</span> cm/s</span>
+          </div>
+          <div class="track-row">
+            <div class="yaxis" id="tkYAxisPos"></div>
+            <div class="tape" id="tkTape"></div>
+            <div class="plot" id="tkPlotXt"><span class="axname"><i>x</i></span><div class="yaxis-in" id="tkYAxisPosIn"></div></div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="vt-block">
+          <div class="block-head vt-head">
+            <span>速度 <i>v</i> (cm/s)</span>
+            <span class="legend" id="tkAreaLegend"><span class="sw"></span>位移合計 = <span id="tkAreaVal">0.0</span> cm</span>
+          </div>
+          <div class="vt-row">
+            <div class="yaxis-v" id="tkYAxisV"></div>
+            <div class="plot" id="tkPlotVt"><span class="axname"><i>v</i></span><div class="yaxis-in" id="tkYAxisVIn"></div></div>
+          </div>
+        </div>
+
+        <div class="taxis taxis-vt" id="tkTAxisVt"></div>
+
+        <div class="at-block" id="tkAtBlock">
+          <button class="at-bar" id="tkAtBar" aria-expanded="false">
+            <span class="t">加速度 <i>a</i>-<i>t</i> 圖</span>
+            <span class="sub">已摺疊</span>
+            <span class="at-legend" id="tkAtLegend"></span>
+            <span class="caret"><i class="fa-solid fa-chevron-down" id="tkAtCaret"></i></span>
+          </button>
+          <div class="at-open">
+            <div class="block-head at-head"><span>加速度 <i>a</i> (cm/s<sup>2</sup>)</span></div>
+            <div class="at-row">
+              <div class="yaxis-v" id="tkYAxisA"></div>
+              <div class="plot" id="tkPlotAt"><span class="axname"><i>a</i></span><div class="yaxis-in" id="tkYAxisAIn"></div></div>
+            </div>
+            <div class="taxis" id="tkTAxisAt"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -413,11 +587,11 @@ label.switch input:checked+.track-sw::after{left:25px}
     <div class="drawer-row">
       <div class="playbtns">
         <button class="round-btn primary" id="btnPlay" aria-label="播放"><i class="fa-solid fa-play" id="playIcon"></i></button>
-        <button class="round-btn" id="btnStep" aria-label="單步前進 0.1 秒"><i class="fa-solid fa-forward-step"></i></button>
+        <button class="round-btn" id="btnStep" aria-label="單步前進 1 秒"><i class="fa-solid fa-forward-step"></i></button>
         <button class="round-btn" id="btnReset" aria-label="重置"><i class="fa-solid fa-rotate-left"></i></button>
       </div>
       <div class="speedbox">
-        <div class="head"><span class="name">速度</span><span class="val" id="speedVal">1.00×</span></div>
+        <div class="head"><span class="name">播放速度</span><span class="val" id="speedVal">1.00×</span></div>
         <input type="range" id="speedSlider" min="0.25" max="2" step="0.25" value="1" aria-label="播放速度倍率">
         <div class="speed-chips" id="speedChips">
           <button data-speed="0.5" aria-pressed="false">0.5×</button>
@@ -425,18 +599,23 @@ label.switch input:checked+.track-sw::after{left:25px}
           <button data-speed="2" aria-pressed="false">2×</button>
         </div>
       </div>
-      <div class="autopause">
+      <div class="autopause only-car">
         <span class="name">每秒自動暫停</span>
         <label class="switch"><input type="checkbox" id="chkAutoPause"><span class="track-sw"></span><span id="autoPauseTxt">關</span></label>
+      </div>
+      <div class="autopause only-tk">
+        <span class="name">每次打點暫停</span>
+        <label class="switch"><input type="checkbox" id="tkChkPause"><span class="track-sw"></span><span id="tkPauseTxt">關</span></label>
       </div>
       <div class="scrubbox">
         <div class="head">
           <span class="name">時間軸</span>
-          <span class="hint">拖曳可停在任一時刻</span>
-          <span class="now"><i>t</i> = <span id="tNow">0.0</span> s ／ 10 s</span>
+          <span class="hint" id="endHint"></span>
+          <span class="now"><i>t</i> = <span id="tNow">0.0</span> s ／ <span id="tEnd">10.0</span> s</span>
         </div>
         <div class="scrub-wrap">
           <div class="scrub-ticks" id="scrubTicks"></div>
+          <div class="scrub-blocked" id="scrubBlocked"></div>
           <input type="range" class="range-lg" id="scrubber" min="0" max="10" step="0.05" value="0" aria-label="時間軸">
         </div>
         <div class="marks"><span>0 s</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10 s</span></div>
@@ -448,17 +627,58 @@ label.switch input:checked+.track-sw::after{left:25px}
     <button class="navtab" data-screen="0" aria-selected="true"><span><i class="fa-solid fa-car-side"></i>車子</span></button>
     <button class="navtab" data-screen="1" aria-selected="false"><span><i class="fa-solid fa-stopwatch"></i>打點計時器</span></button>
   </nav>
+
+  <!-- 放大檢視放在 .app 內：全螢幕投影時進入 fullscreen 的是 #app，
+       擺在它外面的元素在全螢幕下不會被畫出來（.app 沒有 transform，fixed 定位不受影響） -->
+  <div class="modal zoom-modal" id="zoomModal">
+    <div class="zbox">
+      <div class="zhead">
+        <span class="zt">軌道放大</span>
+        <span class="zsub">每一欄是一台車，相鄰兩點相隔 1 秒</span>
+        <span class="ztime"><i>t</i> = <span id="zoomTime">0.0</span> s</span>
+        <button class="zclose" id="btnCloseZoom" aria-label="關閉放大檢視"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="zbody" id="zoomBody">
+        <div class="zyaxis" id="zoomYAxis"></div>
+        <div class="ztrack" id="zoomTrack"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 紙帶放大檢視：轉 90° 就是真實課堂把紙帶撕下來平放在桌上的樣子 -->
+  <div class="modal zoom-modal" id="tkZoomModal">
+    <div class="zbox">
+      <div class="zhead">
+        <span class="zt">紙帶放大</span>
+        <span class="zsub" id="tkZoomSub"></span>
+        <span class="ztime"><i>t</i> = <span id="tkZoomTime">0.0</span> s</span>
+        <button class="zrot" id="tkRotCcw" aria-label="逆時針旋轉 90 度"><i class="fa-solid fa-rotate-left"></i>90°</button>
+        <button class="zrot" id="tkRotCw" aria-label="順時針旋轉 90 度"><i class="fa-solid fa-rotate-right"></i>90°</button>
+        <button class="zclose" id="tkCloseZoom" aria-label="關閉放大檢視"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="zbody zbody-tape" id="tkZoomBody"><canvas id="tkZoomCanvas"></canvas></div>
+    </div>
+  </div>
 </div>
 
 <div class="modal" id="helpModal">
   <div class="box">
     <h3>這個模擬要教什麼</h3>
-    <p>國中生看得懂「車在跑」，但看不懂「<i>x</i>-<i>t</i> 圖的斜率就是速度」。本模擬把<b>軌道與三張圖放在同一條時間軸上</b>，讓你親眼看到三件事同時發生：</p>
-    <p>① <i>x</i>-<i>t</i> 圖變陡的同時，<i>v</i>-<i>t</i> 圖的高度在上升。<br>
-       ② <i>v</i>-<i>t</i> 曲線下的面積，就是 <i>x</i>-<i>t</i> 圖同一段時間的高度落差。<br>
-       ③ <i>a</i>-<i>t</i> 是一條水平線，而它決定了 <i>v</i>-<i>t</i> 的斜率。</p>
-    <p>三個參數剛好對應一條公式：<i>x</i> = <i>x</i><sub>0</sub> + <i>v</i><sub>0</sub><i>t</i> + ½<i>at</i><sup>2</sup>。
-       拖曳底部時間軸可以停在任一時刻討論；最多可以放 4 台車互相對照。</p>
+    <div id="helpCar">
+      <p>你已經知道車子在跑，但「<i>x</i>-<i>t</i> 圖的斜率就是速度」是什麼意思？這個模擬把<b>軌道與三張圖放在同一條時間軸上</b>，讓你親眼看到三件事同時發生：</p>
+      <p>① <i>x</i>-<i>t</i> 圖變陡的同時，<i>v</i>-<i>t</i> 圖的高度在上升。<br>
+         ② <i>v</i>-<i>t</i> 曲線與橫軸圍出的面積，就是 <i>x</i>-<i>t</i> 圖同一段時間的高度落差。<br>
+         ③ <i>a</i>-<i>t</i> 是一條水平線，而它決定了 <i>v</i>-<i>t</i> 的斜率。</p>
+      <p>拖曳底部時間軸可以停在任一時刻討論；最多可以放 4 台車互相對照。</p>
+    </div>
+    <div id="helpTk" style="display:none">
+      <p>打點計時器每隔<b>固定的時間</b>在紙帶上打一個點。時距既然固定，<b>點與點的距離就直接代表那段時間跑得多快</b>——點距越大跑越快。這一頁的三張圖，全部是從紙帶上的點距算出來的：</p>
+      <p>① 量出相鄰兩點的點距，除以時距，就是那一段的<b>平均速度</b>（<i>v</i>-<i>t</i> 圖上的一個點）。<br>
+         ② 相鄰兩段平均速度的差，再除以時距，就是<b>加速度</b>（<i>a</i>-<i>t</i> 圖上的一個點）。<br>
+         ③ 打完的點在紙帶上跟著紙帶一起被拉走，但<b>點距不會改變</b>，所以隨時都量得到。</p>
+      <p>點紙帶上任意兩個點，可以直接量出這兩點的<b>點距</b>與這一段的<b>平均速度</b>：<i>x</i>-<i>t</i> 圖上會標出同一段，<i>v</i>-<i>t</i> 圖上會標出這個平均速度落在哪一個點。選相鄰的兩點（例如第 7 秒與第 8 秒），標到的就是 7.5 秒那個點——自己量到的和圖上畫的是同一個數。<i>v</i>-<i>t</i> 圖上的點也可以直接點，會顯示它的時刻與速度。</p>
+      <p>兩個要注意的地方：真實的電磁式打點計時器<b>每秒打 60 點</b>，畫面上會擠成一條線，所以這裡放慢到每秒 0.5～2 點。另外，<i>v</i>-<i>t</i> 圖上的點標在<b>時距的中間</b>，因為它是那一整段的平均速度，不是某一瞬間的速度；<i>x</i>-<i>t</i> 切線量到的才是瞬時速度，兩者在圖上會差半格。</p>
+    </div>
     <button class="close" id="btnCloseHelp">關閉</button>
   </div>
 </div>
@@ -469,7 +689,7 @@ label.switch input:checked+.track-sw::after{left:25px}
 /* ═══ 1. 常數 ═══ */
 const FONT_STACK = 'system-ui, -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif';
 const T_MAX = 10;          // 時間軸 0–10 s（2026-08-20 裁示，取代舊定案的 20 s）
-const STEP_DT = 0.1;       // 單步 +0.1 s
+const STEP_DT = 1;         // 單步 +1 s：與軌跡點、格線、scrubber 刻度、自動暫停同一個節奏
 const MAX_CARS = 4;
 const CAR_IDS = ['A', 'B', 'C', 'D'];
 
@@ -477,29 +697,33 @@ const CAR_IDS = ['A', 'B', 'C', 'D'];
 const CAR_COLOR = {
   A: { line:'#2A6FDB', edge:'#1E57B0', track:'#7DB0F0', tick:'#A9CBF5' },
   B: { line:'#2F9E63', edge:'#227A4B', track:'#6FD39B', tick:'#9FE3BD' },
-  C: { line:'#E8871E', edge:'#B3651A', track:'#F0AA5E', tick:'#F6C795' },
+  C: { line:'#D9761A', edge:'#B3651A', track:'#F0AA5E', tick:'#F6C795' },
   D: { line:'#8B5CF6', edge:'#6B3FD4', track:'#A98BF8', tick:'#C9B6FA' },
 };
 const C = {
   trackDiv:'rgba(246,247,249,.14)',   // 軌道 4 欄的分隔線
   trackZero:'rgba(246,247,249,.85)',  // 軌道 0 m 基準線
-  axis:'#CFD5DD', grid:'#E2E5EA', cursor:'#1C2433', off:'#8A94A6',
+  axis:'#B4BCC7', grid:'#D5DAE1', cursor:'#1C2433', off:'#8A94A6',
 };
 const PARAM = {
   // 三個滑桿都只有 5 個檔位（step ＝ 全幅的四分之一），拖曳時一格一格跳，
   // 學生設得出來的值就是課本上會出現的那幾個整數
   x0:{ label:'初始位置 <i>x</i><sub>0</sub>', min:-100, max:100, step:50, dec:0, unit:'m' },
-  v0:{ label:'初速度 <i>v</i><sub>0</sub>',   min:-40,  max:40,  step:20, dec:0, unit:'m/s' },
+  v0:{ label:'初速度 <i>v</i><sub>0</sub>',   min:-20,  max:20,  step:10, dec:0, unit:'m/s' },
   a: { label:'加速度 <i>a</i>',               min:-4,   max:4,   step:2,  dec:0, unit:'m/s<sup>2</sup>' },
 };
 // 軌道 222px ＝ 左右各 3px 留白 ＋ 4 欄 × 54px；欄內位置：車 12、軌跡點 29、秒數 36
 const TRACK_PAD = 3, COL_W = 54, COL_CAR = 12, COL_DOT = 29, COL_SEC = 36;
 
-// 三個縱軸範圍固定不動（使用者 2026-08-21 指定），軸不隨參數或播放改變，
-// 不同參數的車才能直接比對曲線形狀。三者刻度正好對上滑桿的 5 個檔位：
-// ±200 m / ±40 m/s / ±4 m/s²，且等速 20 m/s 跑滿 10 s 剛好同時抵達 x 軸與 v 軸頂端。
-// 代價：v0 與 a 都拉到最大的極端組合（10 s 跑 700 m）會衝出圖外，讀數仍正確。
-const POS_RANGE = 200, V_RANGE = 40, A_RANGE = 4;
+// 三個縱軸固定不動（使用者 2026-08-21 指定），軸不隨參數或播放改變，
+// 不同參數的車才能直接比對曲線形狀。
+// RANGE 是「繪圖映射的範圍」，TICK 是「標出來的刻度」，兩者刻意不相等：
+// 車停在最大刻度時若 RANGE = TICK 會整台貼在圖框邊緣上，故 RANGE 各留 10% 餘裕。
+const POS_RANGE = 220, V_RANGE = 44, A_RANGE = 4.4;   // 繪圖範圍（含貼邊餘裕）
+const POS_TICK  = 200, V_TICK  = 40, A_TICK  = 4;     // 刻度值，對上滑桿檔位
+// 出界門檻：任一台可見車的位置到 ±200 m 或速度到 ±40 m/s，該輪模擬就停在那一刻
+// （使用者 2026-08-21 指定）。門檻＝最大刻度，所以畫面上永遠不會有東西被裁掉。
+const X_LIMIT = POS_TICK, V_LIMIT = V_TICK;
 
 /* ═══ 2. state：單一物件，重置時整個換新 ═══ */
 function initState(){
@@ -524,24 +748,69 @@ function velAt(car, t){ return car.v0 + car.a * t; }
 function carById(id){ return state.cars.find(c => c.id === id) || null; }
 function focusCar(){ return carById(state.focus); }
 
+// 這台車最早撞到哪個門檻、在第幾秒。位置解二次式、速度解一次式，取最小正根。
+// 回傳 { t, car, kind }，kind 為 'x'（跑到軌道盡頭）或 'v'（速度到頂）。
+function firstHit(car){
+  let best = T_MAX, kind = null;
+  const consider = (t, k) => {
+    if (t > 1e-9 && t < best - 1e-9){ best = t; kind = k; }
+  };
+  // 速度到頂：v0 + a·t = ±V_LIMIT
+  if (car.a !== 0){
+    consider((V_LIMIT - car.v0) / car.a, 'v');
+    consider((-V_LIMIT - car.v0) / car.a, 'v');
+  }
+  // 位置到頂：0.5a·t² + v0·t + (x0 − L) = 0
+  for (const L of [X_LIMIT, -X_LIMIT]){
+    const c = car.x0 - L;
+    if (car.a === 0){
+      if (car.v0 !== 0) consider(-c / car.v0, 'x');
+    } else {
+      const disc = car.v0 * car.v0 - 2 * car.a * c;
+      if (disc >= 0){
+        const s = Math.sqrt(disc);
+        consider((-car.v0 + s) / car.a, 'x');
+        consider((-car.v0 - s) / car.a, 'x');
+      }
+    }
+  }
+  return { t: best, car, kind };
+}
+
+// 這一輪模擬的終點：所有可見車之中最早出界的那一刻，沒有車出界就是 T_MAX。
+// 時間軸推進與拖曳都以它為上限，所以三張圖上不會有任何東西被裁掉。
+function simEnd(){
+  let best = { t: T_MAX, car: null, kind: null };
+  for (const car of state.cars){
+    if (!car.visible) continue;
+    const hit = firstHit(car);
+    if (hit.t < best.t - 1e-9) best = hit;
+  }
+  return best;
+}
+
 function update(dt){
   const prev = state.t;
+  const end = simEnd().t;
   let next = prev + dt, stop = false;
   // 每秒自動暫停：跨越整數秒就鉗在該秒並停下，讓教師提問
   if (state.autoPause){
-    const mark = Math.floor(prev) + 1;
-    if (next >= mark && mark <= T_MAX){ next = mark; stop = true; }
+    // 容差用 1e-6 而非 1e-9：t 停在整數秒後被浮點誤差壓成 1.9999999 的話，1e-9 撈不回來，
+    // 算出的 mark 會是剛才才停過的那一秒，於是按播放又立刻停在原地
+    const mark = Math.floor(prev + 1e-6) + 1;
+    if (next >= mark && mark <= end){ next = mark; stop = true; }
   }
-  if (next >= T_MAX){ next = T_MAX; stop = true; }
+  if (next >= end){ next = end; stop = true; }
   // 先落定 t 再 pause——pause 會依 t 決定播放鈕與單步鈕的狀態
   seek(next);
   if (stop) pause();
 }
 
-// 時間的唯一入口：跑到終點就記下 drawn，之後往回拖曳曲線也不會再消失
+// 時間的唯一入口：跑到這一輪的終點就記下 drawn，之後往回拖曳曲線也不會再消失
 function seek(t){
-  state.t = Math.max(0, Math.min(T_MAX, t));
-  if (state.t >= T_MAX - 1e-9) state.drawn = true;
+  const end = simEnd().t;
+  state.t = Math.max(0, Math.min(end, t));
+  if (state.t >= end - 1e-9) state.drawn = true;
 }
 
 /* ═══ 4. 繪製：讀 state 畫畫面，不改 state ═══ */
@@ -587,9 +856,9 @@ const px = v => Math.round(v) + 0.5;
 function drawGrid(ctx, r, zeroY){
   for (let t = 1; t < T_MAX; t += 1){
     const x = px(tx(r, t));
-    dashLine(ctx, x, r.y, x, r.y + r.h, C.grid, 1, [3, 3]);
+    dashLine(ctx, x, r.y, x, r.y + r.h, C.grid, 1 * U, [3 * U, 3 * U]);
   }
-  if (zeroY !== null) dashLine(ctx, r.x, px(zeroY), r.x + r.w, px(zeroY), C.axis, 1.5);
+  if (zeroY !== null) dashLine(ctx, r.x, px(zeroY), r.x + r.w, px(zeroY), C.axis, 1.5 * U);
 }
 
 function renderBg(){
@@ -597,19 +866,12 @@ function renderBg(){
   ctx.clearRect(0, 0, W, H);
 
   // 軌道：4 欄分隔線 ＋ 0 m 基準線（軌道底色與圓角由 CSS 負責）
-  const rt = R.track;
-  for (let i = 1; i < 4; i++){
-    const x = px(rt.x + TRACK_PAD + COL_W * i);
-    dashLine(ctx, x, rt.y, x, rt.y + rt.h, C.trackDiv, 1);
-  }
-  const zeroTrackY = Math.round(yPos(rt, 0));
-  ctx.fillStyle = C.trackZero;
-  ctx.fillRect(rt.x, zeroTrackY - 1, rt.w, 2);
+  paintTrackBg(ctx, R.track, U);
 
   // x-t：縱軸與軌道共用同一比例，0 m 那條就是 x-t 的 t 軸
   const rx = R.xt;
-  dashLine(ctx, rx.x, px(yPos(rx, POS_RANGE / 2)), rx.x + rx.w, px(yPos(rx, POS_RANGE / 2)), C.grid, 1, [3, 3]);
-  dashLine(ctx, rx.x, px(yPos(rx, -POS_RANGE / 2)), rx.x + rx.w, px(yPos(rx, -POS_RANGE / 2)), C.grid, 1, [3, 3]);
+  dashLine(ctx, rx.x, px(yPos(rx, POS_TICK / 2)), rx.x + rx.w, px(yPos(rx, POS_TICK / 2)), C.grid, 1 * U, [3 * U, 3 * U]);
+  dashLine(ctx, rx.x, px(yPos(rx, -POS_TICK / 2)), rx.x + rx.w, px(yPos(rx, -POS_TICK / 2)), C.grid, 1 * U, [3 * U, 3 * U]);
   drawGrid(ctx, rx, yPos(rx, 0));
 
   // v-t
@@ -635,28 +897,43 @@ function hexA(hex, a){
   const n = parseInt(hex.slice(1), 16);
   return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')';
 }
-const colX = i => R.track.x + TRACK_PAD + COL_W * i;   // 第 i 欄的起點
+// 第 i 欄的起點。矩形與倍率外給，主畫面與放大檢視才能共用同一套欄位幾何
+const colXIn = (rt, u, i) => rt.x + (TRACK_PAD + COL_W * i) * u;
+const colX = i => colXIn(R.track, U, i);
 
 // 車體：canvas 幾何繪製。禁止在 canvas 內畫 Font Awesome 字符（DEV_SPEC 6.3）
-function drawCar(ctx, cx, cy, len, col, dir){
+// u 是縮放係數而非固定讀 U：放大檢視用同一支函式，只是把 u 換成它自己的倍率
+function drawCar(ctx, cx, cy, len, col, dir, u){
   const w = Math.round(len * 0.62), wh = len * 0.22, wy = len * 0.26;
   ctx.save();
   ctx.fillStyle = col.edge;
   for (const sy of [-1, 1]) for (const sx of [-1, 1]){
-    roundRectPath(ctx, sx < 0 ? cx - w / 2 - 3 : cx + w / 2, cy + sy * wy - wh / 2, 3, wh, 1.5);
+    roundRectPath(ctx, sx < 0 ? cx - w / 2 - 3 * u : cx + w / 2, cy + sy * wy - wh / 2, 3 * u, wh, 1.5 * u);
     ctx.fill();
   }
-  roundRectPath(ctx, cx - w / 2, cy - len / 2, w, len, 5);
+  roundRectPath(ctx, cx - w / 2, cy - len / 2, w, len, 5 * u);
   ctx.fillStyle = col.track; ctx.fill();
-  ctx.lineWidth = 2; ctx.strokeStyle = col.edge; ctx.stroke();
+  ctx.lineWidth = 2 * u; ctx.strokeStyle = col.edge; ctx.stroke();
   // 車頭端的亮色擋風線：本模擬不畫速度箭頭，朝向全靠這一道線
   ctx.fillStyle = 'rgba(255,255,255,.82)';
-  ctx.fillRect(cx - w * 0.3, cy - dir * len * 0.26 - 1, w * 0.6, 2);
+  ctx.fillRect(cx - w * 0.3, cy - dir * len * 0.26 - 1 * u, w * 0.6, 2 * u);
   ctx.restore();
 }
 
-function drawTrack(ctx){
-  const rt = R.track; if (!rt) return;
+// 軌道底層：4 欄分隔線與 0 m 基準線
+function paintTrackBg(ctx, rt, u){
+  if (!rt) return;
+  for (let i = 1; i < 4; i++){
+    const x = px(colXIn(rt, u, i));
+    dashLine(ctx, x, rt.y, x, rt.y + rt.h, C.trackDiv, 1 * u);
+  }
+  const zeroY = Math.round(yPos(rt, 0));
+  ctx.fillStyle = C.trackZero;
+  ctx.fillRect(rt.x, zeroY - 1 * u, rt.w, 2 * u);
+}
+
+// 軌道內容畫進任一矩形：主畫面傳 R.track 與 U，放大檢視傳它自己的矩形與倍率
+function paintTrack(ctx, rt, u){
   ctx.save();
   clipRect(ctx, rt);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -664,7 +941,7 @@ function drawTrack(ctx){
   CAR_IDS.forEach((id, i) => {
     const car = carById(id);
     if (!car || !car.visible) return;
-    const col = CAR_COLOR[id], x0 = colX(i);
+    const col = CAR_COLOR[id], x0 = colXIn(rt, u, i);
     // 每秒軌跡點：整數秒直接代公式，不累積資料陣列（DEV_SPEC 6.4）。
     // 舊點同色同 alpha，併成一條 path 一次填完
     ctx.fillStyle = col.track;
@@ -673,31 +950,35 @@ function drawTrack(ctx){
       ctx.beginPath();
       for (let s = 0; s < nowSec; s++){
         const y = yPos(rt, posAt(car, s));
-        ctx.moveTo(x0 + COL_DOT + 3.5, y);
-        ctx.arc(x0 + COL_DOT, y, 3.5, 0, Math.PI * 2);
+        ctx.moveTo(x0 + (COL_DOT + 3.5) * u, y);
+        ctx.arc(x0 + COL_DOT * u, y, 3.5 * u, 0, Math.PI * 2);
       }
       ctx.fill();
       ctx.globalAlpha = 1;
     }
     const yNow = yPos(rt, posAt(car, nowSec));
-    ctx.beginPath(); ctx.arc(x0 + COL_DOT, yNow, 4.5, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x0 + COL_DOT * u, yNow, 4.5 * u, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 2 * u; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
 
     // 秒數標號：兩點擠在一起時只省略數字，點照畫
     let lastLabelY = -Infinity;
     for (let s = 0; s <= nowSec; s++){
       const y = yPos(rt, posAt(car, s));
-      if (Math.abs(y - lastLabelY) < 10) continue;
+      if (Math.abs(y - lastLabelY) < 10 * u) continue;
       const newest = s === nowSec;
       ctx.fillStyle = newest ? '#FFFFFF' : col.tick;
-      ctx.font = '700 ' + (newest ? 10 : 9) + 'px ' + FONT_STACK;
-      ctx.fillText(String(s), x0 + COL_SEC, y);
+      ctx.font = '700 ' + ((newest ? 10 : 9) * u) + 'px ' + FONT_STACK;
+      ctx.fillText(String(s), x0 + COL_SEC * u, y);
       lastLabelY = y;
     }
-    drawCar(ctx, x0 + COL_CAR, yPos(rt, posAt(car, state.t)),
-            id === state.focus ? 20 : 16, col, velAt(car, state.t) < 0 ? -1 : 1);
+    drawCar(ctx, x0 + COL_CAR * u, yPos(rt, posAt(car, state.t)),
+            (id === state.focus ? 20 : 16) * u, col, velAt(car, state.t) < 0 ? -1 : 1, u);
   });
   ctx.restore();
+}
+
+function drawTrack(ctx){
+  if (R.track) paintTrack(ctx, R.track, U);
 }
 
 // 跑的過程只描每秒一個點，跑完 10 s 才連成線——讓學生先看見「一秒一秒的位置」，
@@ -706,7 +987,7 @@ function drawTrack(ctx){
 // 某張圖上 0…floor(t) 每秒一顆點；yOf 把秒數換成該圖的縱座標
 function dotSeries(ctx, car, r, yOf){
   const nowSec = Math.floor(state.t + 1e-9);
-  const rad = car.id === state.focus ? 4 : 3;
+  const rad = (car.id === state.focus ? 4 : 3) * U;
   ctx.fillStyle = CAR_COLOR[car.id].line;
   // 舊點同色同大小，併成一條 path 一次填完；四台車跑到第 10 秒共 120 顆，
   // 每顆各自 beginPath/fill 會讓每幀成本變成三倍以上
@@ -721,21 +1002,36 @@ function dotSeries(ctx, car, r, yOf){
   }
   // 最新一顆略大並加白框，與軌道上的最新軌跡點一致
   ctx.beginPath();
-  ctx.arc(tx(r, nowSec), yOf(nowSec), rad + 1, 0, Math.PI * 2);
+  ctx.arc(tx(r, nowSec), yOf(nowSec), rad + 1 * U, 0, Math.PI * 2);
   ctx.fill();
-  ctx.lineWidth = 1.5; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+  ctx.lineWidth = 1.5 * U; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
 }
 
 function drawCurves(ctx){
-  const done = state.drawn;   // 跑到過 10 s 就一直畫線，往回拖也不收回
+  const done = state.drawn;   // 跑到過這一輪的終點就一直畫線，往回拖也不收回
+  const end = simEnd().t;     // 曲線只畫到出界那一刻，出界之後沒有東西可畫
   for (const car of state.cars){
     if (!car.visible) continue;
     const focus = car.id === state.focus;
     const style = () => {
       // 線寬也是焦點線索，不只靠顏色
-      ctx.lineWidth = focus ? 3.5 : 2;
+      ctx.lineWidth = (focus ? 3.5 : 2) * U;
       ctx.strokeStyle = CAR_COLOR[car.id].line;
       ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.setLineDash([]);
+    };
+    // 曲線右端標車名。投影機色偏、遠距離、環境光強時顏色不一定分得出誰是誰，
+    // 字母是唯一可靠的線索。焦點車不標——它已經有跟著走的讀數膠囊，標了會疊在一起。
+    const tagCurve = (r, y) => {
+      ctx.font = '700 ' + (11 * U) + 'px ' + FONT_STACK;
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      const bw = ctx.measureText(car.id).width + 9 * U, bh = 16 * U;
+      const lx = tx(r, end) - 3 * U;
+      let ly = y - 11 * U;
+      if (ly - bh / 2 < r.y) ly = y + 11 * U;        // 貼頂就改標在線的下方
+      roundRectPath(ctx, lx - bw, ly - bh / 2, bw, bh, 4 * U);
+      ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill();
+      ctx.fillStyle = CAR_COLOR[car.id].line;
+      ctx.fillText(car.id, lx - 4.5 * U, ly + 0.5);
     };
 
     ctx.save(); clipRect(ctx, R.xt);
@@ -744,24 +1040,26 @@ function drawCurves(ctx){
       ctx.beginPath();
       const n = Math.max(2, Math.ceil(R.xt.w / 2.5));   // 拋物線是唯一需要取樣的一張
       for (let i = 0; i <= n; i++){
-        const x = R.xt.x + R.xt.w * i / n;
-        const y = yPos(R.xt, posAt(car, T_MAX * i / n));
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+        const t = end * i / n;
+        const y = yPos(R.xt, posAt(car, t));
+        i ? ctx.lineTo(tx(R.xt, t), y) : ctx.moveTo(tx(R.xt, t), y);
       }
       ctx.stroke();
     }
     dotSeries(ctx, car, R.xt, s => yPos(R.xt, posAt(car, s)));   // 連線後點仍保留
+    if (done && !focus) tagCurve(R.xt, yPos(R.xt, posAt(car, end)));
     ctx.restore();
 
     ctx.save(); clipRect(ctx, R.vt);
     if (done){
       style();
       ctx.beginPath();
-      ctx.moveTo(R.vt.x, yVel(R.vt, velAt(car, 0)));
-      ctx.lineTo(R.vt.x + R.vt.w, yVel(R.vt, velAt(car, T_MAX)));
+      ctx.moveTo(tx(R.vt, 0), yVel(R.vt, velAt(car, 0)));
+      ctx.lineTo(tx(R.vt, end), yVel(R.vt, velAt(car, end)));
       ctx.stroke();
     }
     dotSeries(ctx, car, R.vt, s => yVel(R.vt, velAt(car, s)));
+    if (done && !focus) tagCurve(R.vt, yVel(R.vt, velAt(car, end)));
     ctx.restore();
 
     if (R.at){
@@ -771,7 +1069,7 @@ function drawCurves(ctx){
         // a=0 會與零基線完全重疊，改虛線才看得出「線還在」
         if (car.a === 0) ctx.setLineDash([6, 4]);
         const y = yAcc(R.at, car.a);
-        ctx.beginPath(); ctx.moveTo(R.at.x, y); ctx.lineTo(R.at.x + R.at.w, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(tx(R.at, 0), y); ctx.lineTo(tx(R.at, end), y); ctx.stroke();
       }
       dotSeries(ctx, car, R.at, () => yAcc(R.at, car.a));
       ctx.restore();
@@ -788,24 +1086,66 @@ function drawGuide(ctx){
   const i = CAR_IDS.indexOf(car.id);
   const y = yPos(R.track, posAt(car, state.t));
   if (y < R.track.y || y > R.track.y + R.track.h) return;   // 車跑出圖外就不畫
-  dashLine(ctx, colX(i) + COL_CAR, y, tx(R.xt, state.t), y,
-           hexA(CAR_COLOR[car.id].line, 0.8), 1.5, [5, 4]);
+  dashLine(ctx, colX(i) + COL_CAR * U, y, tx(R.xt, state.t), y,
+           hexA(CAR_COLOR[car.id].line, 0.8), 1.5 * U, [5 * U, 4 * U]);
 }
 
-// v-t 曲線下 0→t 的面積＝位移，只畫焦點車
+// v-t 曲線與 t 軸圍出的面積＝位移，只畫焦點車。
+// v 是時間的一次式，0→t 之間最多跨零一次，所以最多切成兩塊。
+// 兩塊都用車子的顏色（一眼看出這是誰的面積），負的那塊加 45° 斜線網底區分方向，
+// 各自標出自己那塊的位移，兩塊相加才是膠囊上的「位移合計」。
 function drawArea(ctx){
   const car = focusCar();
   if (!state.showArea || !car || !car.visible) return;
-  const r = R.vt, zero = yVel(r, 0);
+  const col = CAR_COLOR[car.id];
+  const r = R.vt, zero = yVel(r, 0), tNow = state.t;
+  if (tNow <= 1e-9) return;
+  const tz = car.a !== 0 ? -car.v0 / car.a : Infinity;   // v 通過零的時刻
+  const segs = (tz > 1e-9 && tz < tNow - 1e-9) ? [[0, tz], [tz, tNow]] : [[0, tNow]];
+
   ctx.save(); clipRect(ctx, r);
-  ctx.fillStyle = hexA(CAR_COLOR[car.id].line, 0.22);
-  ctx.beginPath();
-  ctx.moveTo(tx(r, 0), zero);
-  ctx.lineTo(tx(r, 0), yVel(r, velAt(car, 0)));
-  ctx.lineTo(tx(r, state.t), yVel(r, velAt(car, state.t)));
-  ctx.lineTo(tx(r, state.t), zero);
-  ctx.closePath();
-  ctx.fill();   // v 跨零時這個四邊形自交，nonzero 填法會自然分成正負兩塊，正是要的
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const [ta, tb] of segs){
+    const d = posAt(car, tb) - posAt(car, ta);   // 這一塊的面積，就是這段時間的位移
+    const xa = tx(r, ta), xb = tx(r, tb);
+    const path = () => {
+      ctx.beginPath();
+      ctx.moveTo(xa, zero);
+      ctx.lineTo(xa, yVel(r, velAt(car, ta)));
+      ctx.lineTo(xb, yVel(r, velAt(car, tb)));
+      ctx.lineTo(xb, zero);
+      ctx.closePath();
+    };
+    path();
+    ctx.fillStyle = hexA(col.line, 0.22); ctx.fill();
+    ctx.strokeStyle = hexA(col.line, 0.9); ctx.lineWidth = 1.5 * U; ctx.stroke();
+
+    // 負的那塊加斜線網底。顏色已經拿去表示「哪一台車」，正負只能靠紋理區分
+    if (d < 0){
+      ctx.save();
+      path(); ctx.clip();
+      ctx.strokeStyle = hexA(col.line, 0.55);
+      ctx.lineWidth = 1.5 * U;
+      const H = r.h, step = 9 * U;
+      for (let x = xa - H; x < xb + H; x += step){
+        ctx.beginPath(); ctx.moveTo(x, r.y + H); ctx.lineTo(x + H, r.y); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 數字標在該塊中央。塊太窄或太扁就不標，免得兩個數字疊在一起看不懂
+    const vMid = velAt(car, (ta + tb) / 2), yMid = yVel(r, vMid);
+    const txt = (d >= 0 ? '+' : '−') + fmt(Math.abs(d), 1) + ' m';
+    ctx.font = '700 ' + (12 * U) + 'px ' + FONT_STACK;
+    const bw = ctx.measureText(txt).width + 10 * U, bh = 18 * U;
+    if (xb - xa >= bw && Math.abs(yMid - zero) >= bh){
+      const mx = (xa + xb) / 2, my = (zero + yMid) / 2;
+      roundRectPath(ctx, mx - bw / 2, my - bh / 2, bw, bh, 4 * U);
+      ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fill();
+      ctx.strokeStyle = hexA(col.line, 0.7); ctx.lineWidth = 1 * U; ctx.stroke();
+      ctx.fillStyle = col.edge; ctx.fillText(txt, mx, my + 0.5);
+    }
+  }
   ctx.restore();
 }
 
@@ -819,9 +1159,9 @@ function drawTangent(ctx){
   const bx = tx(r, tb), by = yPos(r, x0 + v * (tb - t0));
   ctx.save(); clipRect(ctx, r);
   ctx.lineCap = 'round';
-  ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6;   // 先壓白底，跨過任何曲線都看得見
+  ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6 * U;   // 先壓白底，跨過任何曲線都看得見
   ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-  ctx.strokeStyle = C.cursor; ctx.lineWidth = 2; ctx.setLineDash([7, 5]);
+  ctx.strokeStyle = C.cursor; ctx.lineWidth = 2 * U; ctx.setLineDash([7 * U, 5 * U]);
   ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
   ctx.restore();
 }
@@ -835,22 +1175,22 @@ function drawNowDots(ctx){
   // leftGuard：圖內側縱軸刻度佔掉的寬度，膠囊不能壓上去（只有 x-t 有）
   const dotWithLabel = (r, y, txt, leftGuard) => {
     const cx = tx(r, state.t);
-    ctx.font = '700 12px ' + FONT_STACK;
+    ctx.font = '700 ' + (12 * U) + 'px ' + FONT_STACK;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    const w = ctx.measureText(txt).width + 12, h = 19;
-    let bx = cx + 10, by = y - h - 6;
-    if (bx + w > r.x + r.w - 2) bx = cx - 10 - w;   // 貼右邊界就改標在點的左側
-    if (bx < r.x + leftGuard) bx = r.x + leftGuard;
-    if (by < r.y + 2) by = y + 6;                   // 貼頂端就改標在點的下方
-    roundRectPath(ctx, bx, by, w, h, 5);
+    const w = ctx.measureText(txt).width + 12 * U, h = 19 * U;
+    let bx = cx + 10 * U, by = y - h - 6 * U;
+    if (bx + w > r.x + r.w - 2) bx = cx - 10 * U - w;   // 貼右邊界就改標在點的左側
+    if (bx < r.x + leftGuard * U) bx = r.x + leftGuard * U;
+    if (by < r.y + 2) by = y + 6 * U;                   // 貼頂端就改標在點的下方
+    roundRectPath(ctx, bx, by, w, h, 5 * U);
     ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fill();
-    ctx.lineWidth = 1.5; ctx.strokeStyle = col.line; ctx.stroke();
+    ctx.lineWidth = 1.5 * U; ctx.strokeStyle = col.line; ctx.stroke();
     ctx.fillStyle = col.edge;
-    ctx.fillText(txt, bx + 6, by + h / 2 + 0.5);
+    ctx.fillText(txt, bx + 6 * U, by + h / 2 + 0.5);
 
-    ctx.beginPath(); ctx.arc(cx, y, 5.5, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(cx, y, 5.5 * U, 0, Math.PI * 2);
     ctx.fillStyle = col.line; ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+    ctx.lineWidth = 2 * U; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
   };
   ctx.save(); clipRect(ctx, R.xt);
   dotWithLabel(R.xt, yPos(R.xt, posAt(car, state.t)), fmt(posAt(car, state.t), 1) + ' m', 50);
@@ -874,7 +1214,7 @@ function render(){
   const bottom = R.at ? R.at.y + R.at.h : R.vt.y + R.vt.h;
   const cx = Math.round(tx(rx, state.t));
   ctx.fillStyle = C.cursor;
-  ctx.fillRect(cx - 1, rx.y, 2, bottom - rx.y);
+  ctx.fillRect(cx - 1 * U, rx.y, 2 * U, bottom - rx.y);
 
   drawTangent(ctx);
   drawNowDots(ctx);
@@ -955,12 +1295,14 @@ function renderTrackLabels(){
     if (!car) return '';
     const col = CAR_COLOR[id];
     const c = car.visible ? col.track : C.off;
-    let h = '<span class="col-label" style="left:' + (TRACK_PAD + COL_W * i + 2) + 'px;color:' + c + '">' + id + '</span>';
+    let h = '<span class="col-label" style="left:calc(' + (TRACK_PAD + COL_W * i + 2) + 'px * var(--u));color:' + c + '">' + id + '</span>';
     if (!car.visible){
-      h += '<span class="col-label" style="left:' + (TRACK_PAD + COL_W * i + 2) + 'px;top:18px;font-size:10px;color:' + C.off + '"><i class="fa-solid fa-eye-slash"></i></span>';
+      h += '<span class="col-label" style="left:calc(' + (TRACK_PAD + COL_W * i + 2) + 'px * var(--u));top:calc(18px * var(--u));font-size:calc(10px * var(--u));color:' + C.off + '"><i class="fa-solid fa-eye-slash"></i></span>';
     }
     return h;
-  }).join('');
+  }).join('') +
+  // 放大鏡跟著欄標籤一起重建，所以事件走 elTrack 上的委派，不在這裡逐次掛監聽
+  '<button class="track-zoom" aria-label="放大軌道看點距"><i class="fa-solid fa-magnifying-glass-plus"></i></button>';
 }
 
 function renderAtLegend(){
@@ -974,20 +1316,26 @@ function renderAtLegend(){
 // 刻度值可能是 25 也可能是 2.5，小數位依值決定，不要固定一位
 const axisFmt = v => fmt(v, Number.isInteger(v) ? 0 : 1);
 
+// 對稱軸的五檔刻度。刻度值取自 TICK，位置卻要依 RANGE 換算——兩者刻意不等
+// （RANGE 多留 10% 貼邊餘裕），所以最大刻度不落在 0%／100%，而是各自內縮一點
+const ticks = (range, tick, unit) =>
+  [[tick, 1], [tick / 2, 0], [0, 1], [-tick / 2, 0], [-tick, 1]]
+    .map(([v, major]) =>
+      '<span class="' + (major ? 'major' : '') +
+      '" style="top:' + ((range - v) / (2 * range) * 100) + '%">' +
+      axisFmt(v) + (major && unit ? ' ' + unit : '') + '</span>').join('');
+
 // 三個縱軸都是固定範圍，這裡只在開機與版面變動時跑一次
 function renderAxes(){
-  // 對稱軸的五檔刻度：頂、四分之一、0、四分之三、底
-  const ticks = (range, unit) =>
-    [[range, 0, 1], [range / 2, 25, 0], [0, 50, 1], [-range / 2, 75, 0], [-range, 100, 1]]
-      .map(([v, pct, major]) =>
-        '<span class="' + (major ? 'major' : '') + '" style="top:' + pct + '%">' +
-        axisFmt(v) + (major && unit ? ' ' + unit : '') + '</span>').join('');
-
-  document.getElementById('yAxisPos').innerHTML = ticks(POS_RANGE, 'm');
+  document.getElementById('yAxisPos').innerHTML = ticks(POS_RANGE, POS_TICK, 'm');
   // x-t 圖內側的同一組刻度（軌道與 x-t 共用縱軸，數值必然相同）
-  document.getElementById('yAxisPosIn').innerHTML = ticks(POS_RANGE, '');
-  document.getElementById('yAxisV').innerHTML = ticks(V_RANGE, '');
-  document.getElementById('yAxisA').innerHTML = ticks(A_RANGE, '');
+  document.getElementById('yAxisPosIn').innerHTML = ticks(POS_RANGE, POS_TICK, '');
+  // v-t／a-t 的刻度只畫在繪圖區內側：它們左邊沒有軌道隔開，兩組數字會貼在一起重複
+  document.getElementById('yAxisV').innerHTML = '';
+  document.getElementById('yAxisA').innerHTML = '';
+  document.getElementById('yAxisVIn').innerHTML = ticks(V_RANGE, V_TICK, '');
+  const aIn = document.getElementById('yAxisAIn');
+  if (aIn) aIn.innerHTML = ticks(A_RANGE, A_TICK, '');
 
   // 時間軸每 1 秒一格刻度，與軌道的每秒軌跡點同一個節奏
   let marks = '';
@@ -1000,13 +1348,37 @@ function renderAxes(){
 // 只更新會變動的數字，不重建 DOM（拖曳滑桿時重建會中斷拖曳）
 function updateReadouts(){
   const car = focusCar();
+  // 車被眼睛鈕隱藏時圖上什麼都沒畫，膠囊也不該還在報數值
+  const shown = !!car && car.visible;
   document.getElementById('tNow').textContent = fmt(state.t, 1);
   if (car){
     document.getElementById('tangentVal').textContent = fmt(velAt(car, state.t), 1);
     document.getElementById('areaVal').textContent = fmt(posAt(car, state.t) - car.x0, 1);
   }
-  document.getElementById('tangentLegend').style.visibility = state.showTangent && car ? 'visible' : 'hidden';
-  document.getElementById('areaLegend').style.visibility = state.showArea && car ? 'visible' : 'hidden';
+  document.getElementById('tangentLegend').style.visibility = state.showTangent && shown ? 'visible' : 'hidden';
+  document.getElementById('areaLegend').style.visibility = state.showArea && shown ? 'visible' : 'hidden';
+  // 面積圖例跟著焦點車換色，與圖上的填色一致
+  if (shown){
+    const ln = CAR_COLOR[car.id].line;
+    const sw = document.querySelector('#areaLegend .sw');
+    const swn = document.querySelector('#areaLegend .sw-neg');
+    sw.style.background = hexA(ln, 0.22); sw.style.borderColor = ln;
+    swn.style.borderColor = ln;
+    swn.style.background = 'repeating-linear-gradient(45deg,' + hexA(ln, 0.6) +
+      ' 0 1.5px, ' + hexA(ln, 0.12) + ' 1.5px 4.5px)';
+  }
+
+  // 這一輪的終點：沒車出界就是 10 s，有車出界就停在那一刻並說明是誰、撞到哪個上限
+  const end = simEnd();
+  document.getElementById('tEnd').textContent = fmt(end.t, 1);
+  const hint = document.getElementById('endHint');
+  hint.textContent = end.kind === 'x' ? end.car.id + ' 車已到 ' + X_LIMIT + ' m'
+                   : end.kind === 'v' ? end.car.id + ' 車速度已到 ' + V_LIMIT + ' m/s'
+                   : '';
+  const blocked = document.getElementById('scrubBlocked');
+  blocked.classList.toggle('on', end.kind !== null);
+  blocked.style.width = (1 - end.t / T_MAX) * 100 + '%';
+
   const sc = document.getElementById('scrubber');
   if (sc.value !== String(state.t)) { sc.value = state.t; refreshFill(sc); }
   for (const t of document.querySelectorAll('#scrubTicks i'))
@@ -1032,11 +1404,13 @@ carsList.addEventListener('click', e => {
   const act = btn ? btn.dataset.act : null;
   if (act === 'eye'){
     const car = carById(id); car.visible = !car.visible;
+    state.drawn = false;   // 可見車換了一組，這一輪的終點跟著變，重跑
   } else if (act === 'del'){
     if (state.cars.length <= 1) return;
     state.cars = state.cars.filter(c => c.id !== id);
     if (state.focus === id) state.focus = state.cars[0].id;
     if (state.open === id) state.open = state.focus;
+    state.drawn = false;   // 同上：少一台車可能讓終點往後延
   } else if (act === 'toggle'){
     state.open = state.open === id ? null : id;
     if (state.open === id) state.focus = id;
@@ -1060,7 +1434,9 @@ carsList.addEventListener('input', e => {
   cardEl.querySelector('.sum').innerHTML = carLabel(car);
   renderAtLegend();
   state.drawn = false;   // 換了參數就是新的一輪，要重新跑完才連線
-  updateReadouts(); render();
+  // 新參數可能讓終點提前到現在的 t 之前，先把 t 拉回新終點再重畫
+  seek(state.t);
+  updateReadouts(); render(); syncPlayBtn();
 });
 
 document.getElementById('btnAdd').addEventListener('click', () => {
@@ -1098,14 +1474,20 @@ let running = false, wasRunning = false, last = 0, rafId = 0;
 
 function loop(ts){
   if (!running) return;
-  const dt = Math.min((ts - last) / 1000, 0.05);   // 鉗 50ms：切分頁再回來不會跳格
+  // 鉗在 0～50ms。上限：切分頁再回來不會跳格。下限不能省——瀏覽器把點擊事件對齊到影格
+  // 起點派發，play() 裡取的 performance.now() 會晚於隨後那一幀的 ts，相減是負值；時間因此
+  // 退到整數秒之前，下一幀「每秒自動暫停」就判定又跨了一次整數秒而立刻停下，看起來像按了
+  // 播放沒反應。沒開自動暫停時這個負值只是無害的微小倒退，所以只有那個開關下才會發作。
+  const dt = Math.min(Math.max((ts - last) / 1000, 0), 0.05);
   last = ts;
-  update(dt * state.speed);
-  updateReadouts(); render();
-  rafId = requestAnimationFrame(loop);
+  curUpdate(dt * state.speed);
+  curFrame();
+  // update() 內可能已經 pause()，此時不該再排下一幀
+  if (running) rafId = requestAnimationFrame(loop);
 }
 function play(){
-  if (running || state.t >= T_MAX) return;
+  if (running || curT() >= curSimEnd().t - 1e-9) return;
+  if (onTk() && !tkCanPlay()) return;   // 手動拉紙要等手真的開始拖
   running = true; last = performance.now();
   rafId = requestAnimationFrame(loop);
   syncPlayBtn();
@@ -1115,12 +1497,18 @@ function pause(){
   syncPlayBtn();
 }
 function syncPlayBtn(){
-  // 跑到 10 s 時播放鈕轉成「重新播放」提示態，不留一顆按了沒反應的鈕（稿 E）
-  const atEnd = state.t >= T_MAX;
+  // 跑到這一輪終點時播放鈕轉成「重新播放」提示態，不留一顆按了沒反應的鈕（稿 E）
+  const atEnd = curT() >= curSimEnd().t - 1e-9;
   const icon = atEnd ? 'fa-rotate-left' : running ? 'fa-pause' : 'fa-play';
   document.getElementById('playIcon').className = 'fa-solid ' + icon;
   document.getElementById('btnPlay').setAttribute('aria-label', atEnd ? '重新播放' : running ? '暫停' : '播放');
-  document.getElementById('btnStep').disabled = atEnd;
+  // 手動拉紙還沒開始拖時，播放與單步都按不動：這一頁的時間是被手帶動的
+  const waiting = onTk() && !tkCanPlay();
+  document.getElementById('btnPlay').disabled = waiting;
+  document.getElementById('btnStep').disabled = atEnd || waiting;
+  // 時間軸也要一起鎖。只鎖播放與單步的話，手還沒碰車就能把它拉到 t = 8，
+  // 第一次拖車會把 0～8 秒的路徑整段回填成同一個位置，前 8 秒的點全部錯位
+  document.getElementById('scrubber').disabled = waiting;
 }
 function restart(){
   state.t = 0;
@@ -1133,17 +1521,18 @@ document.addEventListener('visibilitychange', () => {
   else if (wasRunning) play();
 });
 document.getElementById('btnPlay').addEventListener('click', () => {
-  if (state.t >= T_MAX) restart();
+  if (curT() >= curSimEnd().t - 1e-9) curRestart();
   else if (running) pause();
   else play();
 });
 document.getElementById('btnStep').addEventListener('click', () => {
   if (running) pause();
-  seek(state.t + STEP_DT);
-  syncAll();
+  curSeek(curT() + curStepDt());
+  curSyncAll();
 });
 document.getElementById('btnReset').addEventListener('click', () => {
   pause();
+  if (state.screen === 1){ tkReset(); return; }
   const cars = state.cars, focus = state.focus, open = state.open, atExp = state.atExpanded;
   state = initState();
   state.cars = cars; state.focus = focus; state.open = open; state.atExpanded = atExp;
@@ -1182,9 +1571,9 @@ document.getElementById('chkAutoPause').addEventListener('change', e => {
 const scrubber = document.getElementById('scrubber');
 scrubber.addEventListener('pointerdown', () => { if (running) pause(); });
 scrubber.addEventListener('input', e => {
-  seek(+e.target.value);
+  curSeek(+e.target.value);
   refreshFill(e.target);
-  updateReadouts(); render(); syncPlayBtn();
+  curFrame(); syncPlayBtn();
 });
 
 /* ── 分頁切換：同一檔案內用 display 切換 ── */
@@ -1193,24 +1582,87 @@ document.getElementById('nav').addEventListener('click', e => {
   showScreen(+tab.dataset.screen);
 });
 function showScreen(n){
-  if (n !== 0) pause();
+  // 兩頁各有自己的時間軸與播放進度，切頁一律先停，不讓看不見的那一頁在背景繼續跑
+  pause();
   state.screen = n;
   document.getElementById('app').dataset.screen = n;
   for (const t of document.querySelectorAll('.navtab'))
     t.setAttribute('aria-selected', String(+t.dataset.screen === n));
   for (const s of document.querySelectorAll('.screen')) s.classList.remove('active');
   document.getElementById('screen' + n).classList.add('active');
-  if (n === 0) fitAll();
+  // 隱藏中的 stage 量到的是 0×0，必須等它顯示之後才 fit；
+  // syncAll 則把共用的抽屜（時間軸、讀數、刻度）換成這一頁自己的狀態
+  if (n === 0){ fitAll(); syncAll(); } else { tkFitAll(); tkSyncAll(); }
+  syncPlayBtn();
 }
-document.getElementById('btnBackToSim').addEventListener('click', () => showScreen(0));
 
 /* ── 說明彈窗與全螢幕 ── */
 const helpModal = document.getElementById('helpModal');
-const openHelp = () => helpModal.classList.add('open');
+// 兩個分頁教的不是同一件事，說明也各一份，只顯示當前這頁的那一份
+const openHelp = () => {
+  document.getElementById('helpCar').style.display = state.screen === 1 ? 'none' : '';
+  document.getElementById('helpTk').style.display = state.screen === 1 ? '' : 'none';
+  helpModal.classList.add('open');
+};
 document.getElementById('btnHelp').addEventListener('click', openHelp);
-document.getElementById('btnWhat').addEventListener('click', openHelp);
 document.getElementById('btnCloseHelp').addEventListener('click', () => helpModal.classList.remove('open'));
 helpModal.addEventListener('click', e => { if (e.target === e.currentTarget) helpModal.classList.remove('open'); });
+
+/* ── 軌道放大檢視 ──
+   主畫面的軌道只有 222px 寬，四台車的每秒點擠在一起，距離差別看不出來。
+   這裡把同一套欄位幾何用較大的倍率、整個視窗的高度重畫一次，開啟時就暫停
+   （使用者 2026-08-24 定案）：放大是為了停下來比對點距，不是再看一次動畫。 */
+const zoomModal = document.getElementById('zoomModal');
+const zoomBody = document.getElementById('zoomBody');
+const zoomTrack = document.getElementById('zoomTrack');
+const zoomYAxis = document.getElementById('zoomYAxis');
+const zoomOpen = () => zoomModal.classList.contains('open');
+
+function renderZoom(){
+  if (!zoomOpen()) return;
+  const availW = zoomBody.clientWidth - zoomYAxis.offsetWidth - 10 * U;
+  const availH = zoomBody.clientHeight;
+  // 版面還沒就緒時量到的是異常小的矩形，拿去設 canvas 會整張糊掉（同 fitAll 的理由）
+  if (availW < 50 || availH < 50) return;
+  // 倍率同時受可用寬與可用高牽制，並鉗在 3 倍內：再放大只是讓點變粗，
+  // 真正讓距離看得清楚的是縱向間距，而那由 .ztrack 的高度決定，不是倍率
+  const uz = Math.max(1, Math.min(availW / 222, availH / 240, 3));
+  zoomTrack.style.width = Math.round(222 * uz) + 'px';
+
+  // 欄標籤與 canvas 一起重建。標籤走 DOM 疊層而不畫進 canvas，隱藏車的
+  // eye-slash 才有地方擺（DEV_SPEC 6.3 禁止在 canvas 內畫 Font Awesome 字符）
+  zoomTrack.innerHTML = '<canvas></canvas>' + CAR_IDS.map((id, i) => {
+    const car = carById(id);
+    if (!car) return '';
+    const c = car.visible ? CAR_COLOR[id].track : C.off;
+    return '<span class="col-label" style="left:' + ((TRACK_PAD + COL_W * i) * uz) + 'px;' +
+      'width:' + (COL_W * uz) + 'px;top:' + (5 * uz) + 'px;font-size:' + (12 * uz) + 'px;color:' + c + '">' +
+      id + (car.visible ? '' : ' <i class="fa-solid fa-eye-slash"></i>') + '</span>';
+  }).join('');
+
+  const cv = zoomTrack.querySelector('canvas');
+  const ctx = fitCanvas(cv);
+  const b = cv.getBoundingClientRect();
+  const rt = { x:0, y:0, w:b.width, h:b.height };
+  ctx.clearRect(0, 0, b.width, b.height);
+  paintTrackBg(ctx, rt, uz);
+  paintTrack(ctx, rt, uz);
+
+  zoomYAxis.innerHTML = ticks(POS_RANGE, POS_TICK, 'm');
+  document.getElementById('zoomTime').textContent = fmt(state.t, 1);
+}
+function closeZoom(){ zoomModal.classList.remove('open'); }
+// 放大鏡按鈕隨欄標籤重建，事件因此掛在 elTrack 上做委派
+elTrack.addEventListener('click', e => {
+  if (!e.target.closest('.track-zoom')) return;
+  pause();
+  zoomModal.classList.add('open');
+  renderZoom();
+});
+document.getElementById('btnCloseZoom').addEventListener('click', closeZoom);
+zoomModal.addEventListener('click', e => { if (e.target === e.currentTarget) closeZoom(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && zoomOpen()) closeZoom(); });
+window.addEventListener('resize', renderZoom);
 
 const appEl = document.getElementById('app');
 const fullBtn = document.getElementById('btnFull');
@@ -1225,6 +1677,57 @@ if (appEl.requestFullscreen || appEl.webkitRequestFullscreen){
 } else fullBtn.style.display = 'none';
 
 /* ═══ 7. 初始化 ═══ */
+
+// UI 等比放大係數。同樣是 1920 CSS px，24 吋桌機（坐 60 cm）與 75 吋教室大屏
+// （站 6 公尺外看）需要完全不同的字級，光看 CSS 寬度分不出來——改用實體像素
+// （screen.width × DPR）判斷裝置級別：桌機 1920、iPad 2160／2360、教室大屏 3840。
+// 這樣不管大屏是 DPR 1 的 3840 還是 Windows 200% 縮放後的 1920，都判得出來。
+function uiScale(){
+  // 網址帶 ?u=1.8 直接指定倍率，蓋過自動判定。教室大屏把帶參數的網址存成書籤就好——
+  // 自動判定依賴 screen API，而它在部分環境要等很久才有值、甚至一直回 0，不能當唯一手段。
+  const forced = parseFloat(new URLSearchParams(location.search).get('u'));
+  // 手動指定也要吃視窗上限：放大到版面容不下時，時間軸列的 padding 會超過容器寬度被
+  // flex 擠成負值，三張圖也會被標題列與時間軸列吃到剩幾十 px 高，整個畫面等於作廢
+  if (forced > 0) return clampScale(forced);
+  const sw = Math.max(window.screen.width || 0, window.innerWidth || 0) || 1280;
+  const cssW = window.innerWidth || sw;
+  const phys = sw * (window.devicePixelRatio || 1);   // 實體像素＝裝置級別
+  let u;
+  if (phys >= 3000){
+    // 教室觸控大屏。要補償的是「一個 CSS px 等於幾毫米」，那取決於系統縮放設定：
+    // 同一台 3840 大屏，Windows 100% 給 3840 CSS px（每 px 很小、要放大 2.3 倍），
+    // 200% 給 1920 CSS px（每 px 已經夠大、1.15 倍就夠）。與 CSS 寬度成正比才能
+    // 讓字的「實際物理高度」不隨縮放設定改變，6 公尺外都是同樣的 5 弧分。
+    u = cssW / 1920 * 1.15;
+  } else if (phys >= 2000){
+    u = 1.15;   // 平板：把 12–13px 的主體字拉過 14px 的近距離可讀底線
+  } else {
+    u = 1;      // 桌機：坐 60 cm 看，現況已夠清楚
+  }
+  return clampScale(u);
+}
+// 放大係數的天花板由視窗尺寸決定：寬度不足會擠爆左欄與時間軸列，高度不足會把三張圖
+// 壓到只剩幾十 px（標題列與時間軸列也跟著放大，吃掉的是繪圖區）。900×620 是 U=1 時
+// 的舒適下限，等比推算即可。
+function clampScale(u){
+  const cssW = window.innerWidth || 1280, cssH = window.innerHeight || 800;
+  return Math.max(1, Math.min(u, 4, cssW / 900, cssH / 620));
+}
+let U = uiScale();
+// 初值也必須同步寫進 CSS。applyScale() 只在「值有變化」時才寫，若載入當下算出的 U
+// 就已經是最終值，CSS 的 --u 會一直停在 :root 的預設 1 ——於是 canvas 用 U 排版、
+// CSS 版面用 1，軌道寬度與欄標對不上 canvas 畫的欄位，四欄看起來就不等距。
+document.documentElement.style.setProperty('--u', String(U));
+// 回傳「這次有沒有真的改變」：有改變會讓版面尺寸變動並再觸發一次 fitAll，
+// 下一次 uiScale() 算出同值就回 false，因此不會無限循環
+function applyScale(){
+  const u = uiScale();
+  if (Math.abs(u - U) < 1e-6) return false;
+  U = u;
+  document.documentElement.style.setProperty('--u', String(U));
+  return true;
+}
+
 function fitCanvas(canvas){
   const dpr = Math.min(window.devicePixelRatio || 1, 2);   // 高 DPR 平板鉗 2
   const r = canvas.getBoundingClientRect();
@@ -1236,6 +1739,12 @@ function fitCanvas(canvas){
 }
 function fitAll(){
   if (state.screen !== 0) return;
+  applyScale();
+  // 版面還沒就緒時（初次載入、字型載入完成前、視窗劇烈變化的中間幀）量到的
+  // 會是異常小的矩形。拿它去設 canvas.width 會讓整張圖糊掉或空白，而尺寸恢復後
+  // 不保證還會再觸發一次 ResizeObserver ——所以這裡直接跳過，下一幀重試。
+  const r = stageCard.getBoundingClientRect();
+  if (r.width < 50 || r.height < 50){ requestAnimationFrame(fitAll); return; }
   bgCtx = fitCanvas(bgCanvas);
   fgCtx = fitCanvas(fgCanvas);
   measure();
@@ -1243,24 +1752,1336 @@ function fitAll(){
 }
 // 旋轉與分割畫面靠 ResizeObserver 重算，不監聽 orientationchange
 new ResizeObserver(fitAll).observe(stageCard);
+// 兩個分頁各有自己的 canvas。fitAll()／tkFitAll() 都會先判斷 state.screen 才決定要不要
+// 做事，所以這裡兩支都叫；tkFitAll() 內部的 tkRender() 會順帶重畫打點頁的放大檢視。
+// 原本只叫分頁 1 那一支，停在打點頁換螢幕時那一頁會一直糊著、且不會自行恢復
+function fitCurrent(){ fitAll(); tkFitAll(); renderZoom(); }
 // 換螢幕（筆電接投影機）時 DPR 變了但 CSS 尺寸沒變，ResizeObserver 不會觸發 → 另外盯著
 function watchDpr(){
   matchMedia('(resolution: ' + window.devicePixelRatio + 'dppx)')
-    .addEventListener('change', () => { fitAll(); watchDpr(); }, { once:true });
+    .addEventListener('change', () => { fitCurrent(); watchDpr(); }, { once:true });
 }
 watchDpr();
+// screen API 在頁面剛載入時可能還回報 0（部分瀏覽器與嵌入環境如此），uiScale() 會因此
+// 誤判成桌機。而 ResizeObserver 只在版面尺寸變化時觸發——放大係數沒變版面就不會變，
+// 於是永遠卡在 U=1，形成死結。以下三道補算，applyScale() 自身有收斂保護，重複呼叫無害。
+window.addEventListener('load', fitCurrent);
+window.addEventListener('resize', fitCurrent);   // 視窗被拖到另一台螢幕時 screen.width 會變
+// 輪詢等 screen API 就緒（正常瀏覽器第一次就有值，只會多跑一次）
+let scaleTries = 0;
+(function pollScreen(){
+  if (scaleTries++ > 12) return;             // 最多等 ~5 秒就放棄，維持 U=1
+  if (window.screen.width > 0){ fitCurrent(); return; }
+  setTimeout(pollScreen, 400);
+})();
 
 function syncAll(){
+  // 改參數、增刪車、切顯示都會改變這一輪的終點，t 可能落在新終點之後 → 先拉回來
+  seek(state.t);
+  renderScrubTicks(STEP_DT);
   measure(); renderAxes(); updateReadouts(); renderBg(); render(); syncPlayBtn();
+  // 打點頁把單步鈕的說明改成「前進一個時距」，切回這一頁要改回來（讀螢幕才不會念錯）
+  document.getElementById('btnStep').setAttribute('aria-label', '單步前進 1 秒');
+}
+// scrubber 上的刻度＝取樣節奏（車子分頁每秒一格、打點分頁跟著打點頻率），切分頁時重建
+function renderScrubTicks(step){
+  let h = '';
+  for (let t = step; t < T_MAX - 1e-9; t += step)
+    h += '<i data-t="' + t + '" style="left:' + (t / T_MAX * 100) + '%"></i>';
+  document.getElementById('scrubTicks').innerHTML = h;
 }
 
-document.getElementById('scrubTicks').innerHTML =
-  Array.from({ length: T_MAX - 1 }, (_, i) => i + 1)
-    .map(t => '<i data-t="' + t + '" style="left:' + (t / T_MAX * 100) + '%"></i>').join('');
+/* ═══ 8. 打點計時器分頁 ═══
+   版面骨架與分頁 1 完全相同（三張圖的比例、共用時間軸、內側刻度一律不動），
+   差別只有兩處：最左邊 222px 由「四欄軌道」換成 1～2 條紙帶；
+   三張圖的資料改由紙帶上的點距推導而來，而不是直接代公式（PROJECT_PLAN 8.6）。 */
+
+/* ── 8.1 常數 ── */
+const TK_T_MAX = T_MAX;                    // 與分頁 1 同長，抽屜的時間軸才共用得了
+// 位置：刻度 0–40 cm。繪圖範圍上下各留一點餘裕，車停在 40 才不會貼在圖框邊緣上
+const TK_POS_LO = -2, TK_POS_HI = 42, TK_POS_SPAN = TK_POS_HI - TK_POS_LO;
+const TK_X_LIMIT = 40;
+// 速度：0–8 cm/s。紙帶只能單向抽出，v 不會是負的，所以軸也不對稱
+const TK_V_LO = -0.4, TK_V_HI = 8.4, TK_V_SPAN = TK_V_HI - TK_V_LO;
+// 加速度：對稱 ±1 cm/s²（「快而慢」的 a 是負的）
+const TK_A_RANGE = 1.1, TK_A_TICK = 1;
+
+// 五個情境。4 與 5 刻意設計成對稱（同樣走 40 cm、同樣 |a| = 0.8），可以並排講加速與減速；
+// 3、4、5 都恰好在 t = 10 s 走完 40 cm，尺度剛好用滿
+const TK_SCENES = [
+  { name:'靜止',   v0:0,   a:0    },
+  { name:'慢穩',   v0:2.5, a:0    },
+  { name:'快穩',   v0:4,   a:0    },
+  { name:'慢而快', v0:0,   a:0.8  },
+  { name:'快而慢', v0:8,   a:-0.8 },
+];
+// 預設「慢穩」而不是「靜止」：靜止情境的點全部疊在打點頭那一格，
+// 一開機就看到那個畫面會被當成壞掉了
+const TK_DEFAULT_SCENE = 1;
+
+const TK_MAX_TAPES = 2;
+const TAPE_IDS = ['A', 'B'];
+// 欄位幾何：1 條時把 222px 用滿、2 條時各佔 111px（與分頁 1 的 222px 軌道等寬）。
+// 欄內座標一律走 tapeAt()，不要在別處重算——分頁 1 曾因此讓四欄與 canvas 錯開
+const TAPE_GEOM = {
+  1: { colW:222, paper:30, paperW:150, dot:80, sec:125, car:199 },
+  2: { colW:111, paper:8,  paperW:70,  dot:38, sec:62,  car:96  },
+};
+const TK_C = {
+  paper:'#FFFFFF', paperEdge:'#C2C9D3', ink:'#1C2433', sec:'#67717F',
+  body:'#8A94A3', bodyEdge:'#5F6B7E', needle:'#3F4A5C',
+  gridMinor:'#E7EBF1',
+};
+// 打點瞬間針尖戳下去再彈回所需的時間（模擬時間，所以慢動作時它也會跟著變慢）
+const TK_STRIKE = 0.13;
+// 跑完之後的收尾：計時器（機身＋針）淡出消失，紙帶在打點頭下方一點被撕斷。
+// 目的是讓最後幾個點看得乾淨——針原本壓在最後一點上、機身也擠在旁邊。
+// 撕痕基準線放在打點頭下方 TK_TEAR_GAP，齒往下咬，才不會咬到最後那個點
+// （0 cm 到紙帶底只有 2 cm 空間，點半徑就佔掉將近一半）。
+// 純視覺收尾：點的位置一格都沒動，三張圖、測距、參考線全部照舊
+const TK_TEAR_MS = 520, TK_TEAR_GAP = 6, TK_TEAR_DEPTH = 2.5;
+// 手動拉紙時，手指離台車多近才算抓到它（CSS px，會乘 --u）
+const TK_GRAB = 40;
+
+/* ── 8.2 state：獨立於分頁 1，兩頁互不影響 ── */
+function tkInitState(){
+  return {
+    mode:'scene',                 // 'scene'（自動拉紙）｜'manual'（手動拉紙）
+    // selA／selB 掛在每條紙帶身上，兩條可以各自量各自的一段、同時顯示在圖上
+    tapes:[{ id:'A', scene:TK_DEFAULT_SCENE, visible:true, selA:null, selB:null }],
+    focus:'A',                    // 焦點紙帶：切線／面積／參考線／測距都只作用在它身上
+    freq:1,                       // 打點頻率 Hz
+    t:0, drawn:false,
+    pauseOnTick:false,
+    // 教學輔助疊層一律預設關（DESIGN_SPEC 第 4 節）
+    showTangent:false, showArea:false, showGuide:false,
+    atExpanded:false,
+    manualX:0,                    // 手動拉紙時車的當前位置
+    // 手動拉紙每 0.1 s 記一格，回放時線性插值。長度固定 101，不是會無限成長的
+    // 陣列（DEV_SPEC 6.4）；情境模式用不到它，位置一律由公式算
+    path:new Float32Array(TK_T_MAX * 10 + 1),
+    pathMax:0,
+    stopAt:null,                  // 手動拉紙提前拉到底的時刻
+    started:false,                // 手動拉紙：手真的開始拖了沒——沒拖就不該開始計時
+    tear:0,                       // 跑完之後的收尾進度 0→1：計時器淡出＋紙帶撕斷（純視覺）
+    vPick:null,                   // 直接點 v-t 圖讀速度：{ id, n }，n 是第幾段
+    rot:0,                        // 放大檢視的旋轉：0／1／2／3 ＝ 0°／90°／180°／270°
+  };
+}
+let tkS = tkInitState();
+
+/* ── 8.3 物理與打點資料（純計算，不碰 DOM） ── */
+const tkTapeById = id => tkS.tapes.find(x => x.id === id) || null;
+const tkFocusTape = () => tkTapeById(tkS.focus) || tkS.tapes[0];
+const tkVisibleTapes = () => tkS.tapes.filter(x => x.visible);
+const tkColor = tape => CAR_COLOR[tape.id];
+const tkGeom = () => TAPE_GEOM[Math.min(TK_MAX_TAPES, Math.max(1, tkS.tapes.length))];
+
+const tkDt = () => 1 / tkS.freq;                              // 打點間隔
+const tkTickT = n => n * tkDt();                              // 第 n 個點打下去的時刻
+const tkTickCount = t => Math.floor(t / tkDt() + 1e-9) + 1;   // 已打的點數（含第 0 點）
+
+// 手動拉紙的位置：沒有公式可代，只能查 0.1 s 一格的路徑表並線性插值
+function tkPathX(t){
+  const i = Math.max(0, Math.min(tkS.pathMax, t * 10));
+  const i0 = Math.floor(i), i1 = Math.min(tkS.pathMax, i0 + 1);
+  return tkS.path[i0] + (tkS.path[i1] - tkS.path[i0]) * (i - i0);
+}
+function tkXAt(tape, t){
+  if (tkS.mode === 'manual'){
+    // 正在拉的那一刻直接用手上的位置：路徑表 0.1 s 才記一格，只查表的話
+    // 車會慢手指最多 0.1 秒才跟上，拖起來像卡住。回放已經拉過的區段才查表
+    if (t >= tkS.pathMax / 10 - 1e-9) return tkS.manualX;
+    return tkPathX(t);
+  }
+  const s = TK_SCENES[tape.scene];
+  return Math.min(TK_X_LIMIT, s.v0 * t + 0.5 * s.a * t * t);
+}
+// 這一輪跑到哪為止：情境模式取所有可見紙帶中最早拉到 40 cm 的那一刻，
+// 手動模式則是拉到底的那一刻。五個情境都恰好在 10 s 走完，所以通常 kind 是 null
+function tkSimEnd(){
+  if (tkS.mode === 'manual')
+    return { t: tkS.stopAt === null ? TK_T_MAX : tkS.stopAt, kind: tkS.stopAt === null ? null : 'x', id:tkS.focus };
+  let best = { t:TK_T_MAX, kind:null, id:null };
+  for (const tape of tkVisibleTapes()){
+    const s = TK_SCENES[tape.scene];
+    let hit = TK_T_MAX, kind = null;
+    const consider = t => { if (t > 1e-9 && t < hit - 1e-9){ hit = t; kind = 'x'; } };
+    if (s.a === 0){
+      if (s.v0 > 0) consider(TK_X_LIMIT / s.v0);
+    } else {
+      const disc = s.v0 * s.v0 + 2 * s.a * TK_X_LIMIT;
+      if (disc >= 0){
+        const q = Math.sqrt(disc);
+        consider((-s.v0 + q) / s.a);
+        consider((-s.v0 - q) / s.a);
+      }
+    }
+    if (hit < best.t - 1e-9) best = { t:hit, kind, id:tape.id };
+  }
+  return best;
+}
+
+// 第 n 個點打下去時車在哪裡。紙帶跟著車走，所以這個點之後會被拉開
+// 「現在的位置 − 這個值」那麼遠（PROJECT_PLAN 8.5）
+const tkTickX = (tape, n) => tkXAt(tape, tkTickT(n));
+// 第 n 段的平均速度 ＝ 點距 ÷ 時距
+const tkSegV = (tape, n) => (tkTickX(tape, n) - tkTickX(tape, n - 1)) / tkDt();
+// 平均速度標在時距的中點：等加速度運動的區間平均速度，恰等於區間中點的瞬時速度，
+// 標在中點這些點才會落在真正的 v-t 直線上（標在區間末端會整段偏移半格）
+const tkSegT = n => (tkTickT(n - 1) + tkTickT(n)) / 2;
+// 加速度 ＝ 相鄰兩段平均速度之差 ÷ 時距。那兩個 v 點的中點恰好落在打點時刻 tₙ 上
+const tkAccA = (tape, n) => (tkSegV(tape, n + 1) - tkSegV(tape, n)) / tkDt();
+// 當前的瞬時速度：情境模式有公式；手動拉紙沒有，只能用最近一段的平均速度代替
+function tkVNow(tape){
+  if (tkS.mode === 'scene'){
+    const s = TK_SCENES[tape.scene];
+    return Math.max(0, s.v0 + s.a * tkS.t);
+  }
+  const n = tkTickCount(tkS.t) - 1;
+  return n >= 1 ? tkSegV(tape, n) : 0;
+}
+// 打點瞬間的動畫進度：1 ＝ 針尖正壓在紙面上（剛打下去），0 ＝ 已經彈回原位。
+// 用模擬時間算，所以放慢播放速度時這一下也會跟著變慢；停在打點時刻時值恆為 1，
+// 開「每次打點暫停」就會看到針一直壓著紙
+function tkStrike(){
+  if (tkS.tear > 0) return 0;    // 收尾時整台計時器在淡出，針不再壓著紙
+  const since = tkS.t - tkTickT(tkTickCount(tkS.t) - 1);
+  if (since < -1e-9 || since > TK_STRIKE) return 0;
+  return Math.pow(1 - since / TK_STRIKE, 0.7);
+}
+
+/* ── 8.4 時間推進：時間的唯一入口是 tkSeek（DESIGN_SPEC 第 7 節） ── */
+/* 收尾動畫：跑完那一刻計時器淡出消失，紙帶在打點頭下方一點被撕斷。
+   只改 tkS.tear 這個 0→1 的繪圖用進度，t 與所有資料都不動、點也不移動；
+   往回捲、重跑、換設定都會把計時器叫回來 */
+let tkTearRaf = 0;
+function tkTearStart(){
+  if (tkTearRaf || tkS.tear > 0) return;
+  const t0 = performance.now();
+  const step = () => {
+    const p = Math.min(1, (performance.now() - t0) / TK_TEAR_MS);
+    tkS.tear = 1 - Math.pow(1 - p, 3);   // 末端減速
+    tkRender();
+    tkTearRaf = p < 1 ? requestAnimationFrame(step) : 0;
+  };
+  tkTearRaf = requestAnimationFrame(step);
+}
+function tkTearStop(){
+  if (tkTearRaf){ cancelAnimationFrame(tkTearRaf); tkTearRaf = 0; }
+  tkS.tear = 0;
+}
+function tkSeek(t){
+  const end = tkSimEnd().t;
+  tkS.t = Math.max(0, Math.min(end, t));
+  if (tkS.t >= end - 1e-9){ tkS.drawn = true; tkTearStart(); }
+  else tkTearStop();
+}
+function tkUpdate(dt){
+  const prev = tkS.t, end = tkSimEnd().t;
+  let next = prev + dt, stop = false;
+  // 每次打點暫停：跨過下一個打點時刻就鉗在那一刻停下（與分頁 1 的每秒暫停同一套寫法，
+  // 容差同樣用 1e-6，否則停在打點時刻後會被浮點誤差判成又跨了一次，按播放像沒反應）
+  if (tkS.pauseOnTick){
+    const d = tkDt();
+    const mark = (Math.floor(prev / d + 1e-6) + 1) * d;
+    if (next >= mark && mark <= end){ next = mark; stop = true; }
+  }
+  if (next >= end){ next = end; stop = true; }
+  tkSeek(next);
+  if (tkS.mode === 'manual') tkRecord();
+  if (stop) pause();
+}
+// 手動拉紙：把當前位置寫進路徑表，中間沒被寫到的格子一併補平。
+// 已經記錄過的區段不再覆寫——往回拖時間軸是「回看」，不是重拉（DESIGN_SPEC 第 7 節）
+function tkRecord(){
+  // 用 floor 不用 round：round 會把 t = 1.95 當下的位置記成 t = 2.0 的位置，
+  // 整條 x-t 與由它推導的 v、a 會一起系統性提前半格取樣
+  const idx = Math.min(tkS.path.length - 1, Math.floor(tkS.t * 10 + 1e-9));
+  if (idx > tkS.pathMax){
+    for (let k = tkS.pathMax + 1; k <= idx; k++) tkS.path[k] = tkS.manualX;
+    tkS.pathMax = idx;
+  }
+  if (tkS.manualX >= TK_X_LIMIT - 1e-9 && tkS.stopAt === null) tkS.stopAt = tkS.t;
+}
+function tkClearPath(){
+  tkS.path.fill(0); tkS.pathMax = 0; tkS.manualX = 0; tkS.stopAt = null;
+}
+// 換情境、換模式、換頻率、增刪紙帶都是新的一輪：時間歸零、曲線收回、選取清掉
+function tkResetRun(){
+  tkS.t = 0; tkS.drawn = false; tkS.started = false; tkS.vPick = null;
+  tkTearStop();
+  for (const tape of tkS.tapes){ tape.selA = null; tape.selB = null; }
+  tkClearPath();
+}
+// 手動拉紙時，時間要等手真的碰到台車才開始跑：計時器是被車帶動的，
+// 車還沒動就讓時間空跑，前幾秒的點會全部疊在原地，看起來像壞掉
+function tkCanPlay(){
+  return tkS.mode !== 'manual' || tkS.started;
+}
+function tkRestart(){
+  tkResetRun();
+  tkSyncAll();
+  play();
+}
+
+/* ── 8.5 繪製 ── */
+const tkStage = document.getElementById('tkStage');
+const tkBgCanvas = document.getElementById('tkBgCanvas');
+const tkFgCanvas = document.getElementById('tkFgCanvas');
+const elTape = document.getElementById('tkTape');
+const elTkXt = document.getElementById('tkPlotXt');
+const elTkVt = document.getElementById('tkPlotVt');
+const elTkAt = document.getElementById('tkPlotAt');
+let tkBgCtx = null, tkFgCtx = null, TW = 0, TH = 0;
+let RT = { tape:null, xt:null, vt:null, at:null };
+
+function tkMeasure(){
+  const base = tkStage.getBoundingClientRect();
+  const rect = el => {
+    const b = el.getBoundingClientRect();
+    return { x:b.left - base.left, y:b.top - base.top, w:b.width, h:b.height };
+  };
+  TW = base.width; TH = base.height;
+  RT.tape = rect(elTape);
+  RT.xt = rect(elTkXt);
+  RT.vt = rect(elTkVt);
+  RT.at = tkS.atExpanded ? rect(elTkAt) : null;
+}
+
+const tkTx = (r, t) => r.x + t / TK_T_MAX * r.w;
+const tkYPos = (r, x) => r.y + (TK_POS_HI - x) / TK_POS_SPAN * r.h;
+const tkYVel = (r, v) => r.y + (TK_V_HI - v) / TK_V_SPAN * r.h;
+const tkYAcc = (r, a) => r.y + (TK_A_RANGE - a) / (2 * TK_A_RANGE) * r.h;
+const tkXFromY = (r, y) => TK_POS_HI - (y - r.y) / r.h * TK_POS_SPAN;
+// 第 i 欄的欄內座標。主畫面與放大檢視共用同一支，只是 g 與 u 換掉
+const tapeAt = (rt, g, u, i, off) => rt.x + (g.colW * i + off) * u;
+// 旋轉之後文字要轉回來，否則秒數會側躺
+function tkText(ctx, txt, x, y, rot){
+  ctx.save();
+  ctx.translate(x, y);
+  if (rot) ctx.rotate(-rot * Math.PI / 2);
+  ctx.fillText(txt, 0, 0);
+  ctx.restore();
+}
+
+// 格線密度 ＝ 打點節奏（DESIGN_SPEC 第 7 節「刻度節奏 ＝ 取樣節奏」）。
+// 2 Hz 時每 0.5 s 一條，其中整秒那幾條畫深一階，才數得出哪幾條是整秒
+function tkGrid(ctx, r, zeroY){
+  const d = tkDt();
+  for (let k = 1; k * d < TK_T_MAX - 1e-9; k++){
+    const t = k * d, x = px(tkTx(r, t));
+    const major = Math.abs(t - Math.round(t)) < 1e-9;
+    dashLine(ctx, x, r.y, x, r.y + r.h, major ? C.grid : TK_C.gridMinor, 1 * U, [3 * U, 3 * U]);
+  }
+  if (zeroY !== null) dashLine(ctx, r.x, px(zeroY), r.x + r.w, px(zeroY), C.axis, 1.5 * U);
+}
+function tkRenderBg(){
+  const ctx = tkBgCtx; if (!ctx) return;
+  ctx.clearRect(0, 0, TW, TH);
+  // x-t 的 0 cm 那條，就是紙帶上打點頭所在的高度
+  tkGrid(ctx, RT.xt, tkYPos(RT.xt, 0));
+  tkGrid(ctx, RT.vt, tkYVel(RT.vt, 0));
+  if (RT.at) tkGrid(ctx, RT.at, tkYAcc(RT.at, 0));
+}
+
+/* 秒數標號的排版。點太密時原本是直接把數字省略，於是加速的紙帶會標成
+   「0 秒 2 3 4 5 6」——點有 7 個、數字只有 6 個，看起來像少打了一點，
+   而這一頁要教的正是「時距固定」。改成把擠在一起的標號上下推開、拉一條細線
+   指回它自己的點；真的推不下才整體退成等差的每 2 個、每 4 個標一次
+   （等差序列不會被讀成漏點）。回傳推開後的 y 陣列，放不下則回傳 null。 */
+function tkSpreadLabels(ys, gap, top, bottom){
+  const out = ys.slice();
+  for (let i = 1; i < out.length; i++) out[i] = Math.max(out[i], out[i - 1] + gap);
+  const over = out[out.length - 1] - bottom;
+  if (over > 0){                       // 下緣頂到了 → 整組往上移，再從下往上壓回去
+    for (let i = 0; i < out.length; i++) out[i] -= over;
+    for (let i = out.length - 2; i >= 0; i--) out[i] = Math.min(out[i], out[i + 1] - gap);
+    if (out[0] < top) return null;
+  }
+  return out;
+}
+function tkPaintSec(ctx, at, g, u, rt, tape, rot, ys, n, col){
+  const base = tkS.freq >= 2 ? 2 : 1;  // 2 Hz 的 tickT 是半秒，每 2 個標才會是整數秒
+  let step = base, ks = [], ly = null;
+  for (let tries = 0; tries < 4 && !ly; tries++, step *= 2){
+    ks = [];
+    for (let k = 0; k < n; k += step) ks.push(k);
+    ly = tkSpreadLabels(ks.map(k => ys[k]), 11 * u, rt.y + 6 * u, rt.y + rt.h - 6 * u);
+  }
+  if (!ly) return;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ks.forEach((k, j) => {
+    if (Math.abs(ly[j] - ys[k]) > 1.5 * u){   // 被推開了才拉線，否則畫面上多一堆短線
+      ctx.strokeStyle = hexA(TK_C.sec, .55); ctx.lineWidth = 1 * u; ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(at(g.dot + 6), ys[k]); ctx.lineTo(at(g.sec - 3), ly[j]);
+      ctx.stroke();
+    }
+    ctx.font = '700 ' + (10 * u) + 'px ' + FONT_STACK;
+    ctx.fillStyle = k === n - 1 ? col.edge : TK_C.sec;
+    // 只有最早那一點掛單位，其餘只標數字（每個都掛「秒」會把紙帶塞滿）
+    tkText(ctx, fmt(tkTickT(k), 0) + (k === 0 ? ' 秒' : ''), at(g.sec), ly[j], rot);
+  });
+}
+
+/* 撕痕的鋸齒。基準線在上、齒一律往下咬——打點頭（0 cm）到紙帶底只有 2 cm，
+   上下對稱的鋸齒會咬到最後那個點。齒深用 sin 取不規則值，看起來才像撕的不是剪的 */
+function tkTearPts(l, w, y, u){
+  const n = Math.max(5, Math.round(w / (4.5 * u))), pts = [];
+  for (let i = 0; i <= n; i++){
+    const d = 0.35 + 0.65 * Math.abs(Math.sin(i * 2.399));
+    pts.push([l + w * i / n, y + (i % 2 ? d * TK_TEAR_DEPTH * u : 0)]);
+  }
+  return pts;
+}
+// 撕斷後的紙帶輪廓：上緣是車、下緣是撕痕
+function tkPaperPath(ctx, l, w, top, bottom, u){
+  const pts = tkTearPts(l, w, bottom, u);
+  ctx.beginPath();
+  ctx.moveTo(l, top); ctx.lineTo(l + w, top);
+  for (let i = pts.length - 1; i >= 0; i--) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath();
+}
+
+/* 一條紙帶。紙帶跟著車走：第 n 個點的畫面高度是「車的位置 − 打那一點時車的位置」，
+   所以最早的點永遠貼在車底下、最新的點永遠在打點頭那一格，而所有點都落在
+   0 到 x(t) 之間，永遠不會溢出畫面（PROJECT_PLAN 8.5）。
+   主畫面與放大檢視共用這一支，差別只在 g（欄位幾何）、u（倍率）、rot（旋轉）。 */
+function tkPaintTape(ctx, rt, g, u, i, tape, rot, showSec, cue){
+  const at = off => tapeAt(rt, g, u, i, off);
+  const xNow = tkXAt(tape, tkS.t);
+  const yHead = tkYPos(rt, 0);      // 打點頭（計時器）永遠在 0 cm
+  const yCar = tkYPos(rt, xNow);    // 車＝紙帶被抽出的那一端
+  const col = tkColor(tape);
+  const l = at(g.paper), w = g.paperW * u;
+  const focus = tape.id === tkS.focus;
+
+  // 紙帶本體：從車一路往下穿過計時器，再延伸到底（下面那截是還沒用到的紙）。
+  // 打完之後在打點頭下方一點被撕斷，撕掉的那一截邊淡邊退。
+  // 撕痕位置的兩個約束：不能咬到最後那個點（下限 5u ＞ 點半徑 3.5u），
+  // 也不該掉出紙帶區（上限）。兩者衝突時**優先保證不咬到點**
+  const tear = tkS.tear;
+  const tearY = Math.max(yHead + 5 * u,
+                Math.min(yHead + TK_TEAR_GAP * u, rt.y + rt.h - TK_TEAR_DEPTH * u));
+  const paperEnd = tear > 0 ? tearY : rt.y + rt.h;
+  if (tear > 0 && tear < 1){
+    ctx.save(); ctx.globalAlpha = 1 - tear;
+    ctx.fillStyle = TK_C.paper; ctx.fillRect(l, tearY, w, rt.y + rt.h - tearY);
+    ctx.restore();
+  }
+  ctx.fillStyle = TK_C.paper;
+  if (tear > 0){ tkPaperPath(ctx, l, w, yCar, tearY, u); ctx.fill(); }
+  else ctx.fillRect(l, yCar, w, rt.y + rt.h - yCar);
+  ctx.strokeStyle = TK_C.paperEdge; ctx.lineWidth = 1.5 * u; ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(px(l), yCar); ctx.lineTo(px(l), paperEnd);
+  ctx.moveTo(px(l + w), yCar); ctx.lineTo(px(l + w), paperEnd);
+  ctx.stroke();
+  if (tear > 0){                      // 撕痕本身也描一次邊，才看得出是撕開的
+    const pts = tkTearPts(l, w, tearY, u);
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+  }
+  dashLine(ctx, l, px(yCar), l + w, px(yCar), TK_C.paperEdge, 1.5 * u);
+
+  // 計時器機身：扁平填色＋2px 深一階描邊＋6px 圓角（DESIGN_SPEC 儀器風格）。
+  // 中間留一條槽讓紙帶穿過去，而不是把紙帶蓋掉。打完之後整台淡出消失，
+  // 最後那幾個點才看得乾淨
+  const bl = at(g.paper - 12), bw = (g.paperW + 18) * u, bh = 22 * u;
+  if (tear < 1){
+    ctx.save(); ctx.globalAlpha = 1 - tear;
+    roundRectPath(ctx, bl, yHead - bh / 2, bw, bh, 6 * u);
+    ctx.fillStyle = TK_C.body; ctx.fill();
+    ctx.lineWidth = 2 * u; ctx.strokeStyle = TK_C.bodyEdge; ctx.stroke();
+    ctx.fillStyle = TK_C.paper;
+    ctx.fillRect(l, yHead - bh / 2 + 2 * u, w, Math.max(0, Math.min(bh - 4 * u, paperEnd - (yHead - bh / 2 + 2 * u))));
+    ctx.restore();
+  }
+
+  // 已經打上去的點。k 越大越晚打，畫面上越靠下（越靠近打點頭）
+  const n = tkTickCount(tkS.t);
+  const ys = [];
+  for (let k = 0; k < n; k++) ys.push(tkYPos(rt, xNow - tkTickX(tape, k)));
+  for (let k = 0; k < n; k++){
+    const newest = k === n - 1;
+    ctx.beginPath();
+    // 收尾之後不再放大最後一點：這一輪已經結束，沒有「剛打的點」可強調，
+    // 而放大的那 1px 剛好會吃掉它與撕痕之間的空隙
+    ctx.arc(at(g.dot), ys[k], (newest && tkS.tear === 0 ? 4.5 : 3.5) * u, 0, Math.PI * 2);
+    ctx.fillStyle = newest ? col.line : TK_C.ink;
+    ctx.fill();
+  }
+  if (showSec) tkPaintSec(ctx, at, g, u, rt, tape, rot, ys, n, col);
+
+  // 打點頭：一根從機身伸出來的針。打點的瞬間針尖戳到紙面，之後在 TK_STRIKE 秒內
+  // 彈回原位——沒有這一下，畫面上只會憑空冒出一個點，看不出是被「打」上去的
+  const s = tkStrike();
+  const hx = at(g.dot);
+  const tip = yHead - 13 * u + s * 11 * u;
+  if (tear < 1){                      // 針跟著機身一起淡出
+    ctx.save(); ctx.globalAlpha = 1 - tear;
+    ctx.setLineDash([]); ctx.lineCap = 'round';
+    ctx.strokeStyle = TK_C.needle; ctx.lineWidth = 3 * u;
+    ctx.beginPath();
+    ctx.moveTo(px(hx), yHead - bh / 2 - 7 * u); ctx.lineTo(px(hx), tip - 5 * u);
+    ctx.stroke();
+    ctx.beginPath();   // 針尖：往下收成一個尖角
+    ctx.moveTo(hx, tip); ctx.lineTo(hx - 3.5 * u, tip - 8 * u); ctx.lineTo(hx + 3.5 * u, tip - 8 * u);
+    ctx.closePath(); ctx.fillStyle = TK_C.needle; ctx.fill();
+    if (s > 0.02){   // 打下去的那一瞬間，在剛打好的點上擴散一圈
+      ctx.beginPath();
+      ctx.arc(hx, yHead, (5 + (1 - s) * 10) * u, 0, Math.PI * 2);
+      ctx.strokeStyle = hexA(col.line, s * 0.7); ctx.lineWidth = 2 * u;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 台車：紙帶另一端接在它上面，高度與 x-t 圖上的當前點完全相同
+  const cx = at(g.car);
+  dashLine(ctx, l + w, px(yCar), cx - 7 * u, px(yCar), hexA(col.line, .7), 1.5 * u, [4 * u, 3 * u]);
+  drawCar(ctx, cx, yCar, (focus ? 20 : 17) * u, col, 1, u);
+  // 手動拉紙還沒開始時，在車的上方畫一個往上的箭頭。現在只有抓住台車才算拖曳，
+  // 而左欄那句「拖動台車就會開始計時」已經拿掉，沒有這個提示學生不知道該碰哪裡
+  if (cue && tkS.mode === 'manual' && !tkS.started){
+    const ay = yCar - 30 * u;
+    ctx.setLineDash([]); ctx.lineCap = 'round';
+    ctx.strokeStyle = hexA(col.line, .8); ctx.lineWidth = 2.5 * u;
+    ctx.beginPath(); ctx.moveTo(px(cx), ay + 15 * u); ctx.lineTo(px(cx), ay - 3 * u); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, ay - 9 * u); ctx.lineTo(cx - 6 * u, ay - 1 * u); ctx.lineTo(cx + 6 * u, ay - 1 * u);
+    ctx.closePath(); ctx.fillStyle = hexA(col.line, .8); ctx.fill();
+  }
+  // 兩條紙帶時在欄頂標字母，才對得起「哪條是哪條」（顏色不是唯一線索）
+  if (tkS.tapes.length > 1){
+    ctx.font = '700 ' + (11 * u) + 'px ' + FONT_STACK;
+    ctx.fillStyle = col.line; ctx.textAlign = 'left';
+    tkText(ctx, tape.id, at(g.paper + 2), rt.y + 9 * u, rot);
+  }
+}
+
+function tkDrawTape(ctx){
+  const rt = RT.tape; if (!rt) return;
+  const g = tkGeom();
+  ctx.save(); clipRect(ctx, rt);
+  // 焦點紙帶最後畫，它的車與點才不會被隔壁欄壓住
+  const order = tkS.tapes.map((tape, i) => ({ tape, i })).filter(o => o.tape.visible)
+    .sort((a, b) => (a.tape.id === tkS.focus ? 1 : 0) - (b.tape.id === tkS.focus ? 1 : 0));
+  for (const o of order) tkPaintTape(ctx, rt, g, U, o.i, o.tape, 0, true, true);
+  ctx.restore();
+}
+
+/* 三張圖：每個打點描一個點，跑完這一輪才連線（DESIGN_SPEC 第 7 節「不劇透」「只增不減」） */
+function tkDrawCurves(ctx){
+  const done = tkS.drawn, end = tkSimEnd().t;
+  const nMax = tkTickCount(tkS.t) - 1;
+  for (const tape of tkVisibleTapes()){
+    const col = tkColor(tape), focus = tape.id === tkS.focus;
+    const style = () => {
+      ctx.lineWidth = (focus ? 3 : 2) * U; ctx.strokeStyle = col.line;
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.setLineDash([]);
+    };
+    // 手拉出來的速度與加速度常常衝出座標範圍（v 軸只到 8 cm/s、a 軸只到 ±1）。
+    // 超界的點原本會被 clipRect 直接吃掉，畫面看起來像根本沒描點；改成在圖框
+    // 邊緣畫一個指向外側的三角，至少看得出「它跑到圖外面去了」
+    const dot = (x, y, big, r) => {
+      const out = r ? (y < r.y ? -1 : y > r.y + r.h ? 1 : 0) : 0;
+      if (out){
+        const ey = out < 0 ? r.y + 5 * U : r.y + r.h - 5 * U;
+        ctx.beginPath();
+        ctx.moveTo(x, ey + out * 5 * U);
+        ctx.lineTo(x - 4.5 * U, ey - out * 3 * U);
+        ctx.lineTo(x + 4.5 * U, ey - out * 3 * U);
+        ctx.closePath(); ctx.fillStyle = col.line; ctx.fill();
+        return;
+      }
+      ctx.beginPath(); ctx.arc(x, y, (big ? 4.5 : 3.5) * U, 0, Math.PI * 2);
+      ctx.fillStyle = col.line; ctx.fill();
+      if (big){ ctx.lineWidth = 1.5 * U; ctx.strokeStyle = '#FFFFFF'; ctx.stroke(); }
+    };
+    // 曲線右端標紙帶字母：投影機色偏時顏色不一定分得出誰是誰
+    const tag = (r, y) => {
+      if (tkS.tapes.length < 2 || focus) return;
+      ctx.font = '700 ' + (11 * U) + 'px ' + FONT_STACK;
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      const bw = ctx.measureText(tape.id).width + 9 * U, bh = 16 * U;
+      const lx = tkTx(r, end) - 3 * U;
+      let ly = y - 11 * U;
+      if (ly - bh / 2 < r.y) ly = y + 11 * U;
+      roundRectPath(ctx, lx - bw, ly - bh / 2, bw, bh, 4 * U);
+      ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill();
+      ctx.fillStyle = col.line; ctx.fillText(tape.id, lx - 4.5 * U, ly + 0.5);
+    };
+
+    // x-t：情境模式有公式，連成真正的曲線；手動拉紙沒有公式，只能把記錄到的路徑連起來
+    ctx.save(); clipRect(ctx, RT.xt);
+    if (done){
+      style(); ctx.beginPath();
+      if (tkS.mode === 'scene'){
+        const seg = Math.max(2, Math.ceil(RT.xt.w / 2.5));
+        for (let k = 0; k <= seg; k++){
+          const t = end * k / seg, y = tkYPos(RT.xt, tkXAt(tape, t));
+          k ? ctx.lineTo(tkTx(RT.xt, t), y) : ctx.moveTo(tkTx(RT.xt, t), y);
+        }
+      } else {
+        for (let k = 0; k <= tkS.pathMax; k++){
+          const y = tkYPos(RT.xt, tkS.path[k]);
+          k ? ctx.lineTo(tkTx(RT.xt, k / 10), y) : ctx.moveTo(tkTx(RT.xt, k / 10), y);
+        }
+      }
+      ctx.stroke();
+      tag(RT.xt, tkYPos(RT.xt, tkXAt(tape, end)));
+    }
+    for (let k = 0; k <= nMax; k++)
+      dot(tkTx(RT.xt, tkTickT(k)), tkYPos(RT.xt, tkTickX(tape, k)), k === nMax);
+    ctx.restore();
+
+    // v-t：每一段一個點，標在時距中點。等加速度時這些點會恰好落在一條直線上
+    ctx.save(); clipRect(ctx, RT.vt);
+    if (done && nMax >= 2){
+      style(); ctx.beginPath();
+      for (let k = 1; k <= nMax; k++){
+        const x = tkTx(RT.vt, tkSegT(k)), y = tkYVel(RT.vt, tkSegV(tape, k));
+        k === 1 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      tag(RT.vt, tkYVel(RT.vt, tkSegV(tape, nMax)));
+    }
+    for (let k = 1; k <= nMax; k++)
+      dot(tkTx(RT.vt, tkSegT(k)), tkYVel(RT.vt, tkSegV(tape, k)), k === nMax, RT.vt);
+    ctx.restore();
+
+    // a-t：要有兩段平均速度才算得出一個 a，所以第一個點要等到第 3 次打點才出現
+    if (RT.at){
+      ctx.save(); clipRect(ctx, RT.at);
+      if (done && nMax >= 3){
+        style(); ctx.beginPath();
+        for (let k = 1; k <= nMax - 1; k++){
+          const x = tkTx(RT.at, tkTickT(k)), y = tkYAcc(RT.at, tkAccA(tape, k));
+          k === 1 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      for (let k = 1; k <= nMax - 1; k++)
+        dot(tkTx(RT.at, tkTickT(k)), tkYAcc(RT.at, tkAccA(tape, k)), k === nMax - 1, RT.at);
+      ctx.restore();
+    }
+  }
+}
+
+/* v-t 的面積畫成一格一格的矩形，而不是連續曲線下的面積：
+   資料本來就是離散的，而且每一格的面積正好就是紙帶上對應的那一段點距。 */
+function tkDrawArea(ctx){
+  if (!tkS.showArea) return;
+  const tape = tkFocusTape();
+  if (!tape || !tape.visible) return;
+  const col = tkColor(tape);
+  const r = RT.vt, zero = tkYVel(r, 0), nMax = tkTickCount(tkS.t) - 1;
+  ctx.save(); clipRect(ctx, r);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '700 ' + (10 * U) + 'px ' + FONT_STACK;
+  for (let k = 1; k <= nMax; k++){
+    const xa = tkTx(r, tkTickT(k - 1)), xb = tkTx(r, tkTickT(k)), y = tkYVel(r, tkSegV(tape, k));
+    ctx.fillStyle = hexA(col.line, .2);
+    ctx.fillRect(xa, y, xb - xa, zero - y);
+    ctx.strokeStyle = hexA(col.line, .85); ctx.lineWidth = 1.2 * U; ctx.setLineDash([]);
+    ctx.strokeRect(px(xa), px(y), Math.round(xb - xa), Math.round(zero - y));
+    const txt = fmt(tkTickX(tape, k) - tkTickX(tape, k - 1), 1);
+    if (xb - xa >= ctx.measureText(txt).width + 8 * U && zero - y >= 17 * U){
+      ctx.fillStyle = col.edge;
+      ctx.fillText(txt, (xa + xb) / 2, (zero + y) / 2);
+    }
+  }
+  ctx.restore();
+}
+
+// x-t 游標處的切線。它量的是「瞬時速度」，與 v-t 上那些「平均速度」的點差半格，
+// 這是真實的物理差異，說明彈窗有講
+function tkDrawTangent(ctx){
+  if (!tkS.showTangent) return;
+  const tape = tkFocusTape();
+  if (!tape || !tape.visible) return;
+  const r = RT.xt, t0 = tkS.t, x0 = tkXAt(tape, t0), v = tkVNow(tape);
+  const ta = t0 - 3, tb = t0 + 3;
+  const ax = tkTx(r, ta), ay = tkYPos(r, x0 + v * (ta - t0));
+  const bx = tkTx(r, tb), by = tkYPos(r, x0 + v * (tb - t0));
+  ctx.save(); clipRect(ctx, r);
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6 * U; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.strokeStyle = C.cursor; ctx.lineWidth = 2 * U; ctx.setLineDash([7 * U, 5 * U]);
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.restore();
+}
+
+// 參考線：從 x-t 圖上的當前點水平拉回紙帶區的車。兩者共用同一條縱軸，
+// 位置相同 y 就相同，這條線必定是水平的
+function tkDrawGuide(ctx){
+  if (!tkS.showGuide) return;
+  const tape = tkFocusTape();
+  if (!tape || !tape.visible) return;
+  const rt = RT.tape, y = tkYPos(rt, tkXAt(tape, tkS.t));
+  if (y < rt.y || y > rt.y + rt.h) return;
+  const i = tkS.tapes.indexOf(tape);
+  dashLine(ctx, tapeAt(rt, tkGeom(), U, i, tkGeom().car), y, tkTx(RT.xt, tkS.t), y,
+           hexA(tkColor(tape).line, .8), 1.5 * U, [5 * U, 4 * U]);
+}
+
+// 跟著當前點走的讀數膠囊（畫進 canvas 才跟得住點，DEV_SPEC 4.4 的例外條款）
+function tkDrawNowDots(ctx){
+  const tape = tkFocusTape();
+  if (!tape || !tape.visible) return;
+  const col = tkColor(tape);
+  const cap = (r, cx, y, txt, leftGuard) => {
+    ctx.font = '700 ' + (12 * U) + 'px ' + FONT_STACK;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const w = ctx.measureText(txt).width + 12 * U, h = 19 * U;
+    let bx = cx + 10 * U, by = y - h - 6 * U;
+    if (bx + w > r.x + r.w - 2) bx = cx - 10 * U - w;
+    if (bx < r.x + leftGuard * U) bx = r.x + leftGuard * U;
+    if (by < r.y + 2) by = y + 6 * U;
+    roundRectPath(ctx, bx, by, w, h, 5 * U);
+    ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fill();
+    ctx.lineWidth = 1.5 * U; ctx.strokeStyle = col.line; ctx.setLineDash([]); ctx.stroke();
+    ctx.fillStyle = col.edge;
+    ctx.fillText(txt, bx + 6 * U, by + h / 2 + 0.5);
+    ctx.beginPath(); ctx.arc(cx, y, 5.5 * U, 0, Math.PI * 2);
+    ctx.fillStyle = col.line; ctx.fill();
+    ctx.lineWidth = 2 * U; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+  };
+  ctx.save(); clipRect(ctx, RT.xt);
+  cap(RT.xt, tkTx(RT.xt, tkS.t), tkYPos(RT.xt, tkXAt(tape, tkS.t)), fmt(tkXAt(tape, tkS.t), 1) + ' cm', 50);
+  ctx.restore();
+  // v-t 的當前點是「最近完成的那一段」，它在時距中點，不在時間游標上
+  const n = tkTickCount(tkS.t) - 1;
+  if (n >= 1){
+    ctx.save(); clipRect(ctx, RT.vt);
+    cap(RT.vt, tkTx(RT.vt, tkSegT(n)), tkYVel(RT.vt, tkSegV(tape, n)), fmt(tkSegV(tape, n), 1) + ' cm/s', 4);
+    ctx.restore();
+  }
+}
+
+/* 點選兩點測距：紙帶上標出點距，x-t 圖上同時標出同一段的高度差。
+   兩邊標的是同一個數字——這就是「紙帶上量到的距離 ＝ x-t 圖上的位移」。
+   每條紙帶各記各的選取，所以兩條可以同時各量一段，用各自的顏色一起出現在圖上。 */
+function tkArrow(ctx, x, y0, y1, txt, col, u, side){
+  const a = Math.min(y0, y1), b = Math.max(y0, y1);
+  ctx.strokeStyle = col.line; ctx.lineWidth = 1.5 * u; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(px(x), a); ctx.lineTo(px(x), b); ctx.stroke();
+  ctx.fillStyle = col.line;
+  for (const [y, s] of [[a, 1], [b, -1]]){
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x - 3.5 * u, y + s * 6 * u); ctx.lineTo(x + 3.5 * u, y + s * 6 * u);
+    ctx.closePath(); ctx.fill();
+  }
+  // 紙帶那一側只畫箭頭不掛標籤（txt 為空）：紙帶上已經有秒數標號，
+  // 再放一個數字方塊就會疊在一起。數值改由 x-t 那一側與左欄的說明各標一次
+  if (!txt) return;
+  ctx.font = '700 ' + (11 * u) + 'px ' + FONT_STACK;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  const w = ctx.measureText(txt).width + 8 * u, h = 17 * u, my = (a + b) / 2;
+  // side < 0 時標籤掛在箭頭左邊：選到靠近 t = 10 的兩點時，右邊已經沒有位置，
+  // 整個標籤會落在繪圖區外被 clipRect 裁掉
+  const bx = (side || 1) > 0 ? x + 5 * u : x - 5 * u - w;
+  roundRectPath(ctx, bx, my - h / 2, w, h, 4 * u);
+  ctx.fillStyle = 'rgba(255,255,255,.94)'; ctx.fill();
+  ctx.strokeStyle = col.line; ctx.lineWidth = 1 * u; ctx.stroke();
+  ctx.fillStyle = col.edge; ctx.fillText(txt, bx + 4 * u, my + 0.5);
+}
+// 紙帶上的測距標記（兩個圈＋中間的雙箭頭）。主畫面與放大檢視共用同一支
+function tkPaintMeasureOnTape(ctx, rt, g, u, i, tape){
+  if (tape.selA === null) return;
+  const n = tkTickCount(tkS.t), xNow = tkXAt(tape, tkS.t), col = tkColor(tape);
+  const at = off => rt.x + (g.colW * i + off) * u;
+  const ring = k => {
+    if (k === null || k >= n) return null;
+    const y = tkYPos(rt, xNow - tkTickX(tape, k));
+    ctx.beginPath(); ctx.arc(at(g.dot), y, 7.5 * u, 0, Math.PI * 2);
+    ctx.strokeStyle = col.line; ctx.lineWidth = 2 * u; ctx.setLineDash([]); ctx.stroke();
+    return y;
+  };
+  const ya = ring(tape.selA), yb = ring(tape.selB);
+  if (ya !== null && yb !== null) tkArrow(ctx, at(g.dot + 14), ya, yb, '', col, u);
+}
+/* 圖上的一個數值標記：把那個點圈起來，旁邊掛一個白底膠囊寫出時刻與速度。
+   靠右緣或上緣時自動翻邊；row 讓兩條紙帶的標記錯開，不會疊在一起 */
+function tkValueTag(ctx, r, x, y, txt, col, row){
+  ctx.beginPath(); ctx.arc(x, y, 7.5 * U, 0, Math.PI * 2);
+  ctx.strokeStyle = col.line; ctx.lineWidth = 2 * U; ctx.setLineDash([]); ctx.stroke();
+  ctx.font = '700 ' + (12 * U) + 'px ' + FONT_STACK;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  const w = ctx.measureText(txt).width + 12 * U, h = 19 * U;
+  let bx = x + 12 * U, by = y - h - 8 * U - row * (h + 4 * U);
+  if (bx + w > r.x + r.w - 2) bx = x - 12 * U - w;
+  if (bx < r.x + 2) bx = r.x + 2;
+  if (by < r.y + 2) by = y + 8 * U + row * (h + 4 * U);
+  roundRectPath(ctx, bx, by, w, h, 5 * U);
+  ctx.fillStyle = 'rgba(255,255,255,.94)'; ctx.fill();
+  ctx.lineWidth = 1.5 * U; ctx.strokeStyle = col.line; ctx.stroke();
+  ctx.fillStyle = col.edge; ctx.fillText(txt, bx + 6 * U, by + h / 2 + 0.5);
+}
+function tkDrawMeasure(ctx){
+  const rt = RT.tape, g = tkGeom(), n = tkTickCount(tkS.t);
+  ctx.save(); clipRect(ctx, rt);
+  tkS.tapes.forEach((tape, i) => {
+    if (tape.visible) tkPaintMeasureOnTape(ctx, rt, g, U, i, tape);
+  });
+  ctx.restore();
+
+  // x-t 圖上的同一段。兩條同時有選取時，第二條的標註往右錯開一格，數字才不會疊在一起
+  const r = RT.xt;
+  ctx.save(); clipRect(ctx, r);
+  tkS.tapes.forEach((tape, i) => {
+    if (!tape.visible || tape.selA === null || tape.selB === null) return;
+    if (tape.selA >= n || tape.selB >= n) return;
+    const col = tkColor(tape), off = i * 34 * U;
+    const xa = tkTx(r, tkTickT(tape.selA)), xb = tkTx(r, tkTickT(tape.selB));
+    const pa = tkYPos(r, tkTickX(tape, tape.selA)), pb = tkYPos(r, tkTickX(tape, tape.selB));
+    for (const [cx, cy] of [[xa, pa], [xb, pb]]){
+      ctx.beginPath(); ctx.arc(cx, cy, 7.5 * U, 0, Math.PI * 2);
+      ctx.strokeStyle = col.line; ctx.lineWidth = 2 * U; ctx.setLineDash([]); ctx.stroke();
+    }
+    // 標註預設掛在選取區右邊。選到最後那幾個點時右邊已經沒有位置，整組箭頭與
+    // 數字會落在繪圖區外被裁掉 → 放不下就整組翻到左邊
+    const txt = fmt(Math.abs(tkTickX(tape, tape.selB) - tkTickX(tape, tape.selA)), 1) + ' cm';
+    ctx.font = '700 ' + (11 * U) + 'px ' + FONT_STACK;
+    const need = ctx.measureText(txt).width + 30 * U;
+    const side = Math.max(xa, xb) + off + need <= r.x + r.w ? 1 : -1;
+    const ax = side > 0 ? Math.max(xa, xb) + off + 16 * U : Math.min(xa, xb) - off - 16 * U;
+    dashLine(ctx, xa, px(pa), ax + side * 6 * U, px(pa), hexA(col.line, .5), 1 * U, [4 * U, 3 * U]);
+    dashLine(ctx, xb, px(pb), ax + side * 6 * U, px(pb), hexA(col.line, .5), 1 * U, [4 * U, 3 * U]);
+    tkArrow(ctx, ax, pa, pb, txt, col, U, side);
+  });
+  ctx.restore();
+
+  // v-t 圖上的同一段：標出這一段的平均速度。選相鄰兩點（例如第 7、8 秒）時，
+  // 這個位置恰好就是 v-t 上那個畫在時距中點的點（7.5 秒）——學生自己量到的
+  // 與圖上畫的是同一個數，這是這一頁最想讓他看見的一件事
+  const rv = RT.vt;
+  ctx.save(); clipRect(ctx, rv);
+  tkS.tapes.forEach((tape, i) => {
+    if (!tape.visible || tape.selA === null || tape.selB === null) return;
+    if (tape.selA >= n || tape.selB >= n) return;
+    const a = Math.min(tape.selA, tape.selB), b = Math.max(tape.selA, tape.selB);
+    const dt = tkTickT(b) - tkTickT(a), mt = (tkTickT(a) + tkTickT(b)) / 2;
+    const v = (tkTickX(tape, b) - tkTickX(tape, a)) / dt;
+    tkValueTag(ctx, rv, tkTx(rv, mt), tkYVel(rv, v),
+               fmt(mt, 1) + ' s　' + fmt(v, 1) + ' cm/s', tkColor(tape), i);
+  });
+  // 直接點 v-t 上的點讀速度：與上面的選取各走各的，可以同時出現在圖上
+  if (tkS.vPick){
+    const tape = tkTapeById(tkS.vPick.id), k = tkS.vPick.n;
+    if (tape && tape.visible && k <= n - 1)
+      tkValueTag(ctx, rv, tkTx(rv, tkSegT(k)), tkYVel(rv, tkSegV(tape, k)),
+                 fmt(tkSegT(k), 1) + ' s　' + fmt(tkSegV(tape, k), 1) + ' cm/s', tkColor(tape), 0);
+  }
+  ctx.restore();
+}
+function tkRender(){
+  const ctx = tkFgCtx; if (!ctx) return;
+  ctx.clearRect(0, 0, TW, TH);
+  tkDrawArea(ctx);     // 面積在最底層，不蓋住曲線
+  tkDrawGuide(ctx);
+  tkDrawCurves(ctx);
+  // 時間游標：2px 實線貫穿三張圖（連圖與圖之間的間隙也畫）
+  const bottom = RT.at ? RT.at.y + RT.at.h : RT.vt.y + RT.vt.h;
+  const cx = Math.round(tkTx(RT.xt, tkS.t));
+  ctx.fillStyle = C.cursor;
+  ctx.fillRect(cx - 1 * U, RT.xt.y, 2 * U, bottom - RT.xt.y);
+  tkDrawTangent(ctx);
+  tkDrawNowDots(ctx);
+  tkDrawTape(ctx);
+  tkDrawMeasure(ctx);
+  if (tkZoomOpen()) tkRenderZoom();
+}
+
+/* ── 8.6 紙帶放大檢視：轉 90° 就是把紙帶撕下來平放在桌上的樣子 ── */
+const tkZoomModal = document.getElementById('tkZoomModal');
+const tkZoomBody = document.getElementById('tkZoomBody');
+const tkZoomCanvas = document.getElementById('tkZoomCanvas');
+const tkZoomOpen = () => tkZoomModal.classList.contains('open');
+
+let tkZoomGeom = null;   // 放大檢視當下的幾何，反算點擊位置時要用
+
+function tkRenderZoom(){
+  if (!tkZoomOpen()) return;
+  const W = tkZoomBody.clientWidth, H = tkZoomBody.clientHeight;
+  if (W < 60 || H < 60) return;   // 版面還沒就緒時量到的是異常小的矩形（同 fitAll 的理由）
+  const ctx = fitCanvas(tkZoomCanvas);
+  ctx.clearRect(0, 0, W, H);
+  const rot = tkS.rot, vertical = rot % 2 === 0;
+  // 轉 90°／270° 之後，紙帶的長度方向變成畫面的水平方向，可用空間跟著對調
+  const availW = vertical ? W : H, availH = vertical ? H : W;
+  const n = Math.max(1, tkS.tapes.length);
+  const g = TAPE_GEOM[Math.min(TK_MAX_TAPES, n)];
+  // 倍率同時受欄寬與長度牽制，鉗在 6 倍內：再放大只是讓點變粗，
+  // 真正讓點距看得清楚的是長度方向的伸展
+  const uz = Math.max(1, Math.min(availW / (n * g.colW), availH / 300, 6));
+  const rw = n * g.colW * uz, rh = availH;
+  const rz = { x:0, y:0, w:rw, h:rh };
+  tkZoomGeom = { W, H, rw, rh, rot, uz, g, rz };
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.rotate(rot * Math.PI / 2);
+  ctx.translate(-rw / 2, -rh / 2);
+  // 欄索引用 tapes 的原始 index，隱藏第一條時第二條才不會跳到第一欄（與主畫面一致）
+  tkS.tapes.forEach((tape, i) => {
+    if (!tape.visible) return;
+    tkPaintTape(ctx, rz, g, uz, i, tape, rot, true);
+    tkPaintMeasureOnTape(ctx, rz, g, uz, i, tape);
+  });
+  ctx.restore();
+  document.getElementById('tkZoomTime').textContent = fmt(tkS.t, 1);
+  document.getElementById('tkZoomSub').textContent =
+    '時距 ' + fmt(tkDt(), 1) + ' 秒　·　點兩個點可以量點距' +
+    (rot % 2 ? '　·　已轉成水平' : '');
+}
+// 畫的時候做的是 translate(W/2,H/2) → rotate(θ) → translate(-rw/2,-rh/2)，
+// 要把畫面上的點擊位置換回紙帶座標，就得反著做一次
+function tkZoomInverse(sx, sy){
+  const z = tkZoomGeom;
+  const dx = sx - z.W / 2, dy = sy - z.H / 2;
+  const a = -z.rot * Math.PI / 2, cos = Math.cos(a), sin = Math.sin(a);
+  return { x: dx * cos - dy * sin + z.rw / 2, y: dx * sin + dy * cos + z.rh / 2 };
+}
+tkZoomCanvas.addEventListener('pointerdown', e => {
+  if (!tkZoomOpen() || !tkZoomGeom) return;
+  const b = tkZoomCanvas.getBoundingClientRect();
+  const p = tkZoomInverse(e.clientX - b.left, e.clientY - b.top);
+  const hit = tkHitDot(p.x, p.y, tkZoomGeom.rz, tkZoomGeom.g, tkZoomGeom.uz);
+  if (!hit) return;
+  tkSelectDot(hit.tape, hit.k);
+  tkRenderZoom(); tkUpdateReadouts(); tkRender();
+});
+function tkOpenZoom(){
+  pause();                       // 放大是為了停下來比對點距，不是再看一次動畫
+  tkZoomModal.classList.add('open');
+  tkRenderZoom();
+}
+function tkCloseZoom(){ tkZoomModal.classList.remove('open'); }
+function tkRotate(d){ tkS.rot = (tkS.rot + d + 4) % 4; tkRenderZoom(); }
+document.getElementById('tkRotCw').addEventListener('click', () => tkRotate(1));
+document.getElementById('tkRotCcw').addEventListener('click', () => tkRotate(-1));
+document.getElementById('tkCloseZoom').addEventListener('click', tkCloseZoom);
+tkZoomModal.addEventListener('click', e => { if (e.target === e.currentTarget) tkCloseZoom(); });
+window.addEventListener('resize', tkRenderZoom);
+
+/* ── 8.7 DOM 更新 ── */
+// 單向軸的刻度（位置 0–40、速度 0–8）。ticks() 是對稱軸專用的，這裡不能沿用
+const ticksList = (lo, hi, vals, unit) => vals.map(([v, major]) =>
+  '<span class="' + (major ? 'major' : '') + '" style="top:' + ((hi - v) / (hi - lo) * 100) + '%">' +
+  axisFmt(v) + (major && unit ? ' ' + unit : '') + '</span>').join('');
+
+function tkRenderAxes(){
+  const pos = [[40, 1], [30, 0], [20, 0], [10, 0], [0, 1]];
+  const vel = [[8, 1], [6, 0], [4, 0], [2, 0], [0, 1]];
+  document.getElementById('tkYAxisPos').innerHTML = ticksList(TK_POS_LO, TK_POS_HI, pos, 'cm');
+  document.getElementById('tkYAxisPosIn').innerHTML = ticksList(TK_POS_LO, TK_POS_HI, pos, '');
+  // v-t／a-t 的刻度只畫在繪圖區內側（與分頁 1 一致）
+  document.getElementById('tkYAxisV').innerHTML = '';
+  document.getElementById('tkYAxisA').innerHTML = '';
+  document.getElementById('tkYAxisVIn').innerHTML = ticksList(TK_V_LO, TK_V_HI, vel, '');
+  const aIn = document.getElementById('tkYAxisAIn');
+  if (aIn) aIn.innerHTML = ticks(TK_A_RANGE, TK_A_TICK, '');
+  // 時間軸標籤也跟著打點節奏：0.5 Hz 時每 2 秒一格（1 Hz 與 2 Hz 都標整數秒）
+  const step = tkS.freq < 1 ? 2 : 1;
+  let marks = '';
+  for (let t = 0; t < TK_T_MAX; t += step) marks += '<span>' + t + '</span>';
+  marks += '<span>' + TK_T_MAX + ' s</span>';
+  document.getElementById('tkTAxisVt').innerHTML = marks;
+  document.getElementById('tkTAxisAt').innerHTML = marks;
+}
+
+/* 自製下拉選單：原生 select 的選項列高與選中樣式在 Windows 上控制不了 */
+function ddHtml(value, options, disabled){
+  const cur = options.find(o => String(o.v) === String(value));
+  return '<button class="dd-btn" aria-expanded="false"' + (disabled ? ' disabled' : '') + '>' +
+    '<span class="v">' + (cur ? cur.label : '—') + '</span>' +
+    '<i class="fa-solid fa-chevron-down"></i></button>' +
+    '<div class="dd-list" role="listbox">' +
+    options.map(o => '<button role="option" data-v="' + o.v + '" aria-selected="' +
+      (String(o.v) === String(value)) + '">' + o.label + '</button>').join('') +
+    '</div>';
+}
+function tkCloseAllDd(){
+  for (const d of document.querySelectorAll('.dd.open')){
+    d.classList.remove('open');
+    const b = d.querySelector('.dd-btn');
+    if (b) b.setAttribute('aria-expanded', 'false');
+  }
+}
+// 點到下拉以外的任何地方就收起來。用 capture 才不會被其他 handler 先攔掉；
+// 點在下拉自己身上時不關，否則選項還沒收到 click 就消失了
+document.addEventListener('pointerdown', e => {
+  if (!e.target.closest('.dd')) tkCloseAllDd();
+}, true);
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  tkCloseAllDd();
+  if (tkZoomOpen()) tkCloseZoom();   // 分頁 1 的放大檢視早就吃 Escape，這一頁要一致
+});
+
+function tkRenderTapes(){
+  const manual = tkS.mode === 'manual';
+  const sceneOpts = TK_SCENES.map((s, i) => ({ v:i, label:s.name }));
+  document.getElementById('tkTapeList').innerHTML = tkS.tapes.map(tape => {
+    const col = tkColor(tape), cls = ['tapecard'];
+    if (tape.id === tkS.focus) cls.push('focus');
+    if (!tape.visible) cls.push('off');
+    // 只有一條紙帶時不放眼睛鈕：唯一那條「暫時隱藏」沒有比較的意義，
+    // 它卻是卡片上最搶眼的主色元素，按下去整個舞台變空白
+    const eye = tkS.tapes.length > 1
+      ? '<button class="tape-eye" data-act="eye" aria-label="' + (tape.visible ? '隱藏' : '顯示') + tape.id + '紙帶">' +
+        '<i class="fa-solid ' + (tape.visible ? 'fa-eye' : 'fa-eye-slash') + '"></i></button>'
+      : '';
+    return '<div class="' + cls.join(' ') + '" data-tape="' + tape.id + '">' +
+      '<div class="tape-bar" style="background:' + (tape.visible ? col.line : '#C9C2E6') + '"></div>' +
+      eye +
+      '<span class="tape-nm">' + tape.id + '</span>' +
+      '<div class="dd" data-tape="' + tape.id + '">' + ddHtml(tape.scene, sceneOpts, manual) + '</div>' +
+      '<button class="tape-del" data-act="del" aria-label="刪除' + tape.id + '紙帶"' +
+        (tkS.tapes.length <= 1 ? ' disabled' : '') + '><i class="fa-solid fa-trash-can"></i></button>' +
+    '</div>';
+  }).join('');
+
+  for (const b of document.querySelectorAll('#tkModeChips button'))
+    b.setAttribute('aria-pressed', String((b.dataset.mode === 'manual') === manual));
+  // 打點頻率有兩組膠囊（左欄一組、抽屜一組），共用同一個 state，這裡一起同步
+  for (const b of document.querySelectorAll('.tk-freq button'))
+    b.setAttribute('aria-pressed', String(+b.dataset.freq === tkS.freq));
+
+  document.getElementById('tkCount').textContent =
+    manual ? '手動拉紙 · 1 條' : '顯示 ' + tkVisibleTapes().length + '／' + tkS.tapes.length + ' 條';
+  // 手動拉紙只能一條，新增鈕整顆收起來，不留一顆按不動的鈕在那裡
+  const addBtn = document.getElementById('tkBtnAdd');
+  addBtn.style.display = manual ? 'none' : '';
+  addBtn.disabled = tkS.tapes.length >= TK_MAX_TAPES;
+  document.getElementById('tkAddLabel').textContent =
+    tkS.tapes.length >= TK_MAX_TAPES ? '新增紙帶（已達 2 條上限）' : '新增紙帶';
+
+}
+
+function tkUpdateReadouts(){
+  const end = tkSimEnd();
+  const tape = tkFocusTape();
+  const shown = !!tape && tape.visible;
+  document.getElementById('tNow').textContent = fmt(tkS.t, 1);
+  document.getElementById('tEnd').textContent = fmt(end.t, 1);
+  document.getElementById('endHint').textContent =
+    end.kind === 'x' ? (end.id ? end.id + ' ' : '') + '紙帶已拉到 ' + TK_X_LIMIT + ' cm' : '';
+  const blocked = document.getElementById('scrubBlocked');
+  blocked.classList.toggle('on', end.kind !== null);
+  blocked.style.width = (1 - end.t / TK_T_MAX) * 100 + '%';
+
+  const nMax = tkTickCount(tkS.t) - 1;
+  document.getElementById('tkTangentVal').textContent = fmt(shown ? tkVNow(tape) : 0, 1);
+  document.getElementById('tkAreaVal').textContent = fmt(shown ? tkTickX(tape, nMax) : 0, 1);
+  document.getElementById('tkTangentLegend').style.visibility = tkS.showTangent && shown ? 'visible' : 'hidden';
+  document.getElementById('tkAreaLegend').style.visibility = tkS.showArea && shown ? 'visible' : 'hidden';
+  if (shown){
+    const sw = document.querySelector('#tkAreaLegend .sw');
+    sw.style.background = hexA(tkColor(tape).line, .2);
+    sw.style.borderColor = tkColor(tape).line;
+  }
+
+  // a-t 摺疊條的摘要：摺起來也讀得到每條紙帶的加速度
+  document.getElementById('tkAtLegend').innerHTML = tkVisibleTapes().map(tp => {
+    const a = tkS.mode === 'scene' ? fmt(TK_SCENES[tp.scene].a, 1) + ' cm/s<sup>2</sup>'
+            : (nMax >= 2 ? fmt(tkAccA(tp, nMax - 1), 1) + ' cm/s<sup>2</sup>' : '待第 3 個點');
+    return '<span class="it"><span class="sw" style="background:' + tkColor(tp).line + '"></span>' +
+      (tkS.tapes.length > 1 ? tp.id + ' ' : '') + a + '</span>';
+  }).join('');
+
+  const sc = document.getElementById('scrubber');
+  if (sc.value !== String(tkS.t)){ sc.value = tkS.t; refreshFill(sc); }
+  for (const t of document.querySelectorAll('#scrubTicks i'))
+    t.classList.toggle('passed', +t.dataset.t <= tkS.t + 1e-9);
+  if (tkZoomOpen()) tkRenderZoom();
+}
+
+function tkSyncAll(){
+  tkSeek(tkS.t);
+  renderScrubTicks(tkDt());
+  tkRenderTapes(); tkRenderAxes(); tkMeasure(); tkUpdateReadouts();
+  tkRenderBg(); tkRender(); syncPlayBtn();
+  document.getElementById('btnStep').setAttribute('aria-label', '前進一個時距');
+}
+
+function tkFitAll(){
+  if (state.screen !== 1) return;
+  applyScale();
+  // 隱藏中或版面還沒就緒時量到的是異常小的矩形，拿去設 canvas 會整張糊掉（同 fitAll）
+  const r = tkStage.getBoundingClientRect();
+  if (r.width < 50 || r.height < 50){ requestAnimationFrame(tkFitAll); return; }
+  tkBgCtx = fitCanvas(tkBgCanvas);
+  tkFgCtx = fitCanvas(tkFgCanvas);
+  tkMeasure(); tkRenderBg(); tkRender();
+}
+new ResizeObserver(tkFitAll).observe(tkStage);
+
+function tkReset(){
+  // 重置＝把這一輪跑掉的東西收回去，不是把設定清空。紙帶條數、各自的情境、
+  // 焦點、操作模式、打點頻率一律留著（分頁 1 的重置也是這個語意）
+  const at = tkS.atExpanded, tapes = tkS.tapes, focus = tkS.focus;
+  const mode = tkS.mode, freq = tkS.freq;
+  tkTearStop();
+  tkS = tkInitState();
+  tkS.atExpanded = at; tkS.tapes = tapes; tkS.focus = focus;
+  tkS.mode = mode; tkS.freq = freq;
+  for (const tape of tkS.tapes){ tape.selA = null; tape.selB = null; }
+  // checked 屬性、開關文字、重置還原值三處必須一致（DESIGN_SPEC 第 4 節）
+  for (const id of ['tkChkTangent', 'tkChkArea', 'tkChkGuide', 'tkChkPause'])
+    document.getElementById(id).checked = false;
+  document.getElementById('tkPauseTxt').textContent = '關';
+  tkCloseZoom();   // 膠囊的 aria-pressed 由下面的 tkSyncAll() 一起同步
+  setSpeed(1);
+  tkSyncAll();
+}
+
+/* ── 8.8 互動 ── */
+function tkSetMode(mode){
+  if (tkS.mode === mode) return;
+  pause();
+  tkS.mode = mode;
+  // 手動拉紙只支援一條：切過去就把其他紙帶清掉（使用者 2026-08-24 裁示）
+  if (mode === 'manual'){
+    const keep = tkFocusTape();
+    tkS.tapes = [{ id:'A', scene:keep.scene, visible:true, selA:null, selB:null }];
+    tkS.focus = 'A';
+  }
+  tkResetRun();
+  tkSyncAll();
+}
+function tkSetScene(id, scene){
+  const tape = tkTapeById(id); if (!tape) return;
+  pause();
+  tape.scene = scene;
+  tkS.focus = id;
+  tkResetRun();
+  tkSyncAll();
+}
+document.querySelector('#screen1 .scene-card').addEventListener('click', e => {
+  // 下拉：按鈕開合、選項選取
+  const ddBtn = e.target.closest('.dd-btn');
+  if (ddBtn){
+    if (ddBtn.disabled) return;
+    const dd = ddBtn.closest('.dd'), wasOpen = dd.classList.contains('open');
+    tkCloseAllDd();
+    if (!wasOpen){ dd.classList.add('open'); ddBtn.setAttribute('aria-expanded', 'true'); }
+    return;
+  }
+  const opt = e.target.closest('.dd-list button');
+  if (opt){
+    const dd = opt.closest('.dd');
+    tkCloseAllDd();
+    tkSetScene(dd.dataset.tape, +opt.dataset.v);
+    return;
+  }
+  const modeBtn = e.target.closest('#tkModeChips button');
+  if (modeBtn){ tkSetMode(modeBtn.dataset.mode); return; }
+  // 紙帶卡片：眼睛、刪除、點其他地方＝設為焦點
+  const card = e.target.closest('.tapecard');
+  if (!card) return;
+  const id = card.dataset.tape;
+  const act = (e.target.closest('[data-act]') || {}).dataset;
+  pause();
+  if (act && act.act === 'eye'){
+    const tape = tkTapeById(id);
+    tape.visible = !tape.visible;
+    tkS.drawn = false;              // 可見的紙帶換了一組，這一輪的終點跟著變
+    if (!tape.visible && tkS.focus === id){
+      const other = tkVisibleTapes()[0];
+      if (other) tkS.focus = other.id;
+    }
+  } else if (act && act.act === 'del'){
+    if (tkS.tapes.length <= 1) return;
+    tkS.tapes = tkS.tapes.filter(x => x.id !== id);
+    if (tkS.focus === id) tkS.focus = tkS.tapes[0].id;
+    tkResetRun();
+  } else {
+    tkS.focus = id;   // 每條紙帶的測距各自獨立，換焦點不會動到已經選好的點
+  }
+  tkSyncAll();
+});
+document.getElementById('tkBtnAdd').addEventListener('click', () => {
+  if (tkS.tapes.length >= TK_MAX_TAPES || tkS.mode === 'manual') return;
+  const id = TAPE_IDS.find(x => !tkTapeById(x));
+  if (!id) return;
+  pause();
+  // 新紙帶預設挑一個與現有那條不同的情境，加出來才看得到對照
+  const used = tkS.tapes.map(x => x.scene);
+  const scene = [3, 2, 4, 1, 0].find(s => !used.includes(s));
+  tkS.tapes.push({ id, scene: scene === undefined ? TK_DEFAULT_SCENE : scene, visible:true, selA:null, selB:null });
+  tkS.tapes.sort((p, q) => TAPE_IDS.indexOf(p.id) - TAPE_IDS.indexOf(q.id));
+  tkS.focus = id;
+  tkResetRun();
+  tkSyncAll();
+});
+// 換頻率＝換一組打點時刻，已經描的點全部作廢，整輪重來。
+// 兩組膠囊（左欄與抽屜）用委派一起接，aria-pressed 由 tkRenderTapes() 統一同步
+document.addEventListener('click', e => {
+  const b = e.target.closest('.tk-freq button');
+  if (!b || state.screen !== 1) return;
+  pause();
+  tkS.freq = +b.dataset.freq;
+  tkResetRun(); tkSyncAll();
+});
+document.getElementById('tkChkTangent').addEventListener('change', e => {
+  tkS.showTangent = e.target.checked; tkUpdateReadouts(); tkRender();
+});
+document.getElementById('tkChkArea').addEventListener('change', e => {
+  tkS.showArea = e.target.checked; tkUpdateReadouts(); tkRender();
+});
+document.getElementById('tkChkGuide').addEventListener('change', e => {
+  tkS.showGuide = e.target.checked; tkRender();
+});
+document.getElementById('tkChkPause').addEventListener('change', e => {
+  tkS.pauseOnTick = e.target.checked;
+  document.getElementById('tkPauseTxt').textContent = e.target.checked ? '開' : '關';
+});
+document.getElementById('tkAtBar').addEventListener('click', () => {
+  tkS.atExpanded = !tkS.atExpanded;
+  tkStage.classList.toggle('at-expanded', tkS.atExpanded);
+  document.getElementById('tkAtBar').setAttribute('aria-expanded', String(tkS.atExpanded));
+  document.getElementById('tkAtCaret').className = 'fa-solid ' + (tkS.atExpanded ? 'fa-chevron-up' : 'fa-chevron-down');
+  tkFitAll();
+});
+
+/* 紙帶區的兩種手勢（一律 Pointer Events，DEV_SPEC 鐵律 5）：
+   手動拉紙且這一輪還沒跑完＝拉台車；其餘＝點選打點量距離。 */
+let tkDrag = null;
+// 事件座標換算成「相對 stage-card」的座標系（x 與 y 都要換），
+// 才能直接餵給 tkYPos／tkXFromY／tkHitDot
+const tkLocal = e => {
+  const b = elTape.getBoundingClientRect();
+  return { x:e.clientX - b.left + RT.tape.x, y:e.clientY - b.top + RT.tape.y };
+};
+// 手動拉紙：紙帶只能單向抽出，位置只增不減
+function tkPullTo(y){
+  tkS.manualX = Math.max(tkS.manualX, Math.min(TK_X_LIMIT, tkXFromY(RT.tape, y)));
+  tkRecord();
+  // 開「每次打點暫停」時，時間會停在打點那一刻，但手還按在車上。時間不走、手卻在動，
+  // 這段位移會整個灌進下一個時距讓平均速度虛高 → 手一動就把時間接回去
+  // （play() 自己會擋掉已到終點與「手還沒碰車」兩種情形）
+  if (!running) play();
+  tkUpdateReadouts(); tkRender();
+}
+// 找離 (x, y) 最近的打點。主畫面與放大檢視共用同一支，只是 rt／g／u 換掉；
+// 欄索引一律用 tapes 的原始 index，隱藏第一條時第二條才不會跳到第一欄去
+function tkHitDot(x, y, rt, g, u){
+  const n = tkTickCount(tkS.t);
+  let best = null, bd = 15 * u;
+  tkS.tapes.forEach((tape, i) => {
+    if (!tape.visible) return;
+    const xNow = tkXAt(tape, tkS.t), cx = rt.x + (g.colW * i + g.dot) * u;
+    for (let k = 0; k < n; k++){
+      const py = tkYPos(rt, xNow - tkTickX(tape, k));
+      const d = Math.hypot(x - cx, py - y);
+      if (d < bd){ bd = d; best = { tape, k }; }
+    }
+  });
+  return best;
+}
+// 第一下選起點、第二下選終點、第三下換一組重來。每條紙帶各記各的，
+// 所以兩條可以同時各量一段、用各自的顏色一起標在圖上
+function tkSelectDot(tape, k){
+  if (tape.selA === null) tape.selA = k;
+  else if (tape.selB === null && k !== tape.selA) tape.selB = k;
+  else { tape.selA = k; tape.selB = null; }
+}
+function tkPick(x, y){
+  const hit = tkHitDot(x, y, RT.tape, tkGeom(), U);
+  if (!hit) return;
+  tkSelectDot(hit.tape, hit.k);
+  tkUpdateReadouts(); tkRender();
+}
+// 手動拉紙要真的抓在台車上才算拖曳。少了這道判定，手指落在紙帶上緣就會把車
+// 一次拉到 40 cm，stopAt 因此落在 t = 0，整輪還沒開始就結束、只能按重置
+function tkOnCar(p){
+  if (tkS.mode !== 'manual' || !RT.tape) return false;
+  // 回看狀態（時間軸被拉回已經走過的區段）不接受拖曳：那裡的位置查的是舊路徑表，
+  // 車不會跟手，manualX 卻已經被改掉，續播時會瞬跳出一根假的速度柱
+  if (tkS.t < tkS.pathMax / 10 - 1e-9) return false;
+  const yCar = tkYPos(RT.tape, tkXAt(tkS.tapes[0], tkS.t));
+  return Math.abs(p.y - yCar) <= TK_GRAB * U;
+}
+elTape.addEventListener('pointerdown', e => {
+  if (!RT.tape || e.target.closest('.track-zoom')) return;
+  const p = tkLocal(e);
+  if (tkS.t < tkSimEnd().t - 1e-9 && tkOnCar(p)){
+    // 手一碰到台車才算開始，計時從這一刻起跑（在此之前播放鈕是按不動的）
+    tkDrag = true;
+    tkS.started = true;
+    if (!running) play();
+    syncPlayBtn();
+    tkPullTo(p.y);
+    elTape.setPointerCapture(e.pointerId);
+  } else {
+    tkPick(p.x, p.y);
+  }
+});
+elTape.addEventListener('pointermove', e => {
+  if (tkDrag) tkPullTo(tkLocal(e).y);
+});
+const tkEndDrag = e => {
+  if (!tkDrag) return;
+  tkDrag = null;
+  if (elTape.hasPointerCapture(e.pointerId)) elTape.releasePointerCapture(e.pointerId);
+};
+elTape.addEventListener('pointerup', tkEndDrag);
+elTape.addEventListener('pointercancel', tkEndDrag);
+// 放大鈕是 elTape 內唯一的 DOM 子元素，用委派接它的 click
+elTape.addEventListener('click', e => { if (e.target.closest('.track-zoom')) tkOpenZoom(); });
+
+/* 直接點 v-t 圖上的點讀速度。圖上每一個點都是「那一段的平均速度」，點下去就
+   顯示它的時刻與數值；配合在紙帶上選的那一段（例如第 7、8 秒），兩個數字可以
+   當場對照。再點同一個點收起來。命中半徑比紙帶那邊大，手指才點得到 */
+elTkVt.addEventListener('pointerdown', e => {
+  const r = RT.vt; if (!r) return;
+  const b = elTkVt.getBoundingClientRect();
+  const x = e.clientX - b.left + r.x, y = e.clientY - b.top + r.y;
+  const nMax = tkTickCount(tkS.t) - 1;
+  let best = null, bd = 22 * U;
+  for (const tape of tkVisibleTapes()){
+    for (let k = 1; k <= nMax; k++){
+      const d = Math.hypot(x - tkTx(r, tkSegT(k)), y - tkYVel(r, tkSegV(tape, k)));
+      if (d < bd){ bd = d; best = { id:tape.id, n:k }; }
+    }
+  }
+  const same = best && tkS.vPick && tkS.vPick.id === best.id && tkS.vPick.n === best.n;
+  tkS.vPick = same ? null : best;
+  tkRender();
+});
+
+/* ── 8.9 兩個分頁共用同一組播放控制與時間軸，這裡依當前分頁分派 ── */
+function onTk(){ return state.screen === 1; }
+function curT(){ return onTk() ? tkS.t : state.t; }
+function curSimEnd(){ return onTk() ? tkSimEnd() : simEnd(); }
+function curUpdate(dt){ if (onTk()) tkUpdate(dt); else update(dt); }
+function curSeek(t){ if (onTk()) tkSeek(t); else seek(t); }
+function curSyncAll(){ if (onTk()) tkSyncAll(); else syncAll(); }
+function curFrame(){
+  if (onTk()){ tkUpdateReadouts(); tkRender(); }
+  else { updateReadouts(); render(); }
+}
+function curRestart(){ if (onTk()) tkRestart(); else restart(); }
+function curStepDt(){ return onTk() ? tkDt() : STEP_DT; }
+
+function tkInit(){
+  // 膠囊的 aria-pressed 一律由 tkRenderTapes() 同步，這裡不重複一份
+  elTape.innerHTML = '<button class="track-zoom" aria-label="放大紙帶看點距">' +
+    '<i class="fa-solid fa-magnifying-glass-plus"></i></button>';
+  tkRenderTapes();
+  tkRenderAxes();
+}
+
 refreshFill(document.getElementById('speedSlider'));
 refreshFill(scrubber);
 renderCars();
 renderAxes();
+tkInit();
 fitAll();
 syncAll();
 </script>
