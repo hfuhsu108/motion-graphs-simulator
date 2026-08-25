@@ -13,7 +13,7 @@
 | 下一步 | **使用者真機驗證（兩個分頁一起）**：iPad Safari／Windows Chrome、`file://` 雙擊直開、4× throttling 的 fps，以及打點頁的三種觸控手勢（拖時間軸、手動拉紙、放大檢視裡點選打點）。通過後才談版號、tag 與 GitHub Pages 部署 |
 | 已寫程式碼 | `index.html`（單一檔案、CSS/JS 內嵌，2876 行；打點計時器分頁佔約 830 行）。設計稿在 `design_handoff/`，已由本目錄 `.gitignore` 排除 |
 | 待裁示 | **軌跡點在前段被壓縮**的取捨（見第 7 節末列），要不要改成非對稱位置軸由使用者決定 |
-| repo | 獨立 repo（`main`），`.gitignore` 排除 `design_handoff/`。**已 commit，尚未建 GitHub repo、尚未部署**（使用者指定停在本機）。不屬於母倉版控（母倉 `.gitignore` 已排除本目錄，已驗證非巢狀） |
+| repo | 獨立 repo（`main`），`.gitignore` 排除 `design_handoff/`。**2026-08-25 已推上 GitHub 並開啟 Pages**：`hfuhsu108/motion-graphs-simulator`（公開），線上網址 https://hfuhsu108.github.io/motion-graphs-simulator/ 。**repo 名與資料夾名 `motion-graphs-sim` 刻意不同**，配合既有的 density-simulator／mendel-simulator 命名。不屬於母倉版控（母倉 `.gitignore` 已排除本目錄，已驗證非巢狀） |
 
 ---
 
@@ -356,7 +356,7 @@ iPad Safari 開部署網址：版面、字體、動畫流暢度、觸控拖曳�
 | ~~打點計時器只做佔位頁~~ **已於 2026-08-24 解除** | 使用者已提出完整需求細節（點距、頻率、紙帶呈現方式），規格與階段計畫見**第 8 節**。本列保留作為歷史紀錄 | — |
 | 不做自由落體／斜面 | 本模擬聚焦一維等加速度，避免一個模擬塞兩個概念 | 另開新模擬，不擴充本專案 |
 | 不做學習單／挑戰任務模式 | 參考網頁有 Worksheet／Cooperation Mode，本次不跟進 | 使用者提出題庫與判定規則 |
-| 未建 GitHub repo、未部署 | 使用者指定階段 2～6 停在本機 commit，等真機驗過再談 | 使用者說要建 repo／部署；repo 名建議 `motion-graphs-sim` |
+| ~~未建 GitHub repo、未部署~~ **已完成（2026-08-25）** | 原本使用者指定階段 2～6 停在本機 commit | — 已建 `hfuhsu108/motion-graphs-simulator`（公開）並開啟 Pages |
 | 未驗到「真的按下播放跑動畫」 | Claude Browser pane 的頁面處於 hidden，rAF 不執行（pitfalls-services 第 3 條）；已改用手動迴圈呼叫 `update(dt)` ＋ `render()` 推進 700 幀到 t = 10，驗證推進邏輯、每秒自動暫停與繪製端無例外 | 使用者在真實瀏覽器按一次播放確認 |
 | 未驗到 `file://` 雙擊直開 | Browser pane 把專案外的 file:// 檔案渲染成靜態快照，量不到實際行為；已改用靜態證據（無 `fetch`／`XMLHttpRequest`、無 `/` 開頭絕對路徑、唯一外部資源是 FA CDN） | 使用者雙擊 `index.html` 確認 |
 | 未量到 4× CPU throttling 的實際 fps | Browser pane 不合成畫面，量不到真 fps。改量 `render()` 的 JS 端成本（中位數 0.56 ms／幀），但**該數字不含 GPU 光柵化，不足以推論 fps** | 使用者用 DevTools Performance 實測 |
