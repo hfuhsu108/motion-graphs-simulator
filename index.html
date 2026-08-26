@@ -29,7 +29,9 @@
   --c-slider-bg:#D3D9E1;
   /* 版面固定值：三張圖的繪圖區左邊界一律 290＝48（縱軸標）+10+222（軌道）+10。
      三圖左右邊緣嚴格對齊就靠這一條，變窄時只壓縮繪圖區寬度（設計稿 B 標註）。 */
-  --u:1;   /* UI 等比放大係數，由 JS 依裝置實體像素設定，見 uiScale() */
+  --u:1;   /* 字級放大係數，由 JS 依裝置實體像素設定，見 uiScale() */
+  /* 本模擬的左欄用比例欄（minmax(302px,1fr) 3fr），不需要 DEV_SPEC 5.4-2a 的 --ul：
+     比例欄在大屏會自己跟著變寬。--ul 是給「非固定 px 不可」的版面用的，見 template。 */
   --plot-left:calc(290px * var(--u));
   --track-w:calc(222px * var(--u));
 }
@@ -77,7 +79,10 @@ button:active,label.check:active,label.switch:active,.navtab:active,.at-bar:acti
 
 main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 .screen{display:none;height:100%}
-#screen0.active,#screen1.active{display:grid;grid-template-columns:calc(302px * var(--u)) 1fr;gap:12px;min-height:0}
+/* 左欄:舞台 = 1:3（使用者 2026-08-26 指定）。用比例而非固定 px：固定值給不出固定比例，
+   1280 筆電上是 1:3.11、1920 上會漂到 1:5.23。下限 302px 是保底——1194 的 iPad 橫向
+   套 1:3 只給 288px，顯示圖層那三個核取需要 273.5px 而卡片只剩 262.5px，會擠爆。 */
+#screen0.active,#screen1.active{display:grid;grid-template-columns:minmax(302px,1fr) 3fr;gap:12px;min-height:0}
 /* 抽屜兩頁共用一條，只有分頁專屬的控制項互相替換（車子＝每秒自動暫停，打點＝頻率與每次打點暫停） */
 .app[data-screen="0"] .only-tk,.app[data-screen="1"] .only-car{display:none}
 
@@ -98,7 +103,7 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 .carcard.open .car-head{height:44px}
 .carcard.focus .car-head{background:var(--c-primary-soft)}
 .car-bar{width:6px;flex:none;align-self:stretch}
-.car-eye{width:calc(44px * var(--u));height:calc(44px * var(--u));flex:none;display:flex;align-items:center;justify-content:center;color:var(--c-primary);font-size:calc(15px * var(--u))}
+.car-eye{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--c-primary);font-size:calc(15px * var(--u))}
 .carcard.off .car-eye{color:var(--c-text-3)}
 .car-name{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
 .car-name .nm{font-size:calc(13px * var(--u));font-weight:700;white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:6px}
@@ -115,7 +120,7 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 .carcard:not(.focus) .mini-focus{display:none}
 .car-btns{margin-left:auto;display:flex;align-items:center;gap:calc(4px * var(--u));flex:none}
 /* 稿的卡內鈕是 30px，觸控目標不足 → 視覺不變、容器撐到 36×44（DEV_SPEC 鐵律 6） */
-.car-btns button{width:calc(44px * var(--u));height:calc(44px * var(--u));display:flex;align-items:center;justify-content:center;color:var(--c-text-2);font-size:calc(13px * var(--u))}
+.car-btns button{width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--c-text-2);font-size:calc(13px * var(--u))}
 .car-btns .btn-del{color:var(--c-text-3)}
 .car-btns button:disabled{color:var(--c-bd-ctl);cursor:default}
 .car-body{padding:8px 10px;display:flex;flex-direction:column;gap:8px}
@@ -128,8 +133,12 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 
 .layers-card{flex:none;padding:11px 12px;display:flex;flex-direction:column;gap:6px}
 .layers-card .t{font-size:calc(13px * var(--u));font-weight:700}
-.layers-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
-.layers-note{font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.5}
+/* 三個核取排同一橫列（使用者 2026-08-26 指定）。不寫 flex-wrap：左欄是比例欄，大屏上
+   欄寬與字級會一起變大、比例不變；真的放不下時寧可看得出溢出，也不要偷偷換行 */
+/* gap 可收緊：直向的卡片只有 280px，三項排完只剩 13px 餘裕，實機字型比預覽寬幾個
+   百分點就會擠破。放不下時先收間距（下限 4px），不換行也不裁字 */
+.layers-grid{display:flex;align-items:center;gap:clamp(4px,3%,10px)}
+.layers-grid label.check{flex:0 0 auto;white-space:nowrap}
 
 /* ── 模擬卡：軌道 ＋ x-t／v-t／a-t ── */
 .stage-card{position:relative;background:var(--c-surface);border:1px solid var(--c-bd);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0;min-height:0;overflow:hidden}
@@ -152,11 +161,11 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 /* 軌道右下角的放大鏡。視覺只給 30px 才不壓住 D 欄的軌跡點，
    熱區另外用 ::before 撐到 44px（DESIGN_SPEC 鐵律 6 的觸控目標下限） */
 .track-zoom{position:absolute;right:calc(4px * var(--u));bottom:calc(4px * var(--u));z-index:4;
-  width:calc(30px * var(--u));height:calc(30px * var(--u));border-radius:8px;
+  width:30px;height:30px;border-radius:8px;
   background:rgba(255,255,255,.9);border:1px solid var(--c-bd-ctl);color:var(--c-text-2);
   display:flex;align-items:center;justify-content:center;font-size:calc(13px * var(--u))}
 .track-zoom::before{content:'';position:absolute;left:50%;top:50%;
-  width:calc(44px * var(--u));height:calc(44px * var(--u));transform:translate(-50%,-50%)}
+  width:44px;height:44px;transform:translate(-50%,-50%)}
 .track-zoom:active{background:#E8EBF0}
 .plot{flex:1;min-width:0;position:relative;border-left:calc(2px * var(--u)) solid var(--c-bd-ctl)}
 .plot .axname{position:absolute;left:calc(6px * var(--u));top:calc(2px * var(--u));font-size:calc(12px * var(--u));font-weight:700;color:var(--c-text-2)}
@@ -180,7 +189,7 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 
 /* a-t：預設摺疊成 40px 摘要條（各車 a 值仍直接可讀），可點開成完整圖表 */
 .at-block{flex:none;display:flex;flex-direction:column}
-.at-bar{flex:none;height:calc(44px * var(--u));width:100%;border:1px solid var(--c-bd);border-radius:10px;background:var(--c-bg);display:flex;align-items:center;gap:9px;padding:0 8px 0 12px}
+.at-bar{flex:none;height:44px;width:100%;border:1px solid var(--c-bd);border-radius:10px;background:var(--c-bg);display:flex;align-items:center;gap:9px;padding:0 8px 0 12px}
 .at-bar .t{font-size:calc(13px * var(--u));font-weight:700;color:var(--c-text-2);white-space:nowrap;flex:none}
 .at-bar .sub{font-size:calc(12px * var(--u));color:var(--c-text-3);white-space:nowrap;flex:none;overflow:hidden}
 .at-legend{margin-left:auto;flex:none;display:flex;align-items:center;gap:10px;font-size:calc(12px * var(--u));color:var(--c-text-2);white-space:nowrap}
@@ -218,37 +227,50 @@ input[type="range"]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;b
 .range-lg::-moz-range-track{height:10px;border-radius:5px}
 .range-lg::-moz-range-thumb{width:26px;height:26px;border-width:3px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 
-label.check{display:flex;align-items:center;gap:8px;font-size:calc(13px * var(--u));color:var(--c-text-2);height:calc(44px * var(--u));margin:0}
+label.check{display:flex;align-items:center;gap:8px;font-size:calc(13px * var(--u));color:var(--c-text-2);height:44px;margin:0}
 label.check input{position:absolute;opacity:0;width:0;height:0}
 label.check .box{width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid var(--c-bd-ctl);background:var(--c-surface);display:flex;align-items:center;justify-content:center;color:#fff;font-size:calc(12px * var(--u))}
 label.check input:checked+.box{background:var(--c-primary);border-color:var(--c-primary)}
 label.check .box i{visibility:hidden}
 label.check input:checked+.box i{visibility:visible}
-label.switch{display:flex;align-items:center;gap:8px;font-size:calc(12px * var(--u));color:var(--c-text-3);height:calc(44px * var(--u))}
+label.switch{display:flex;align-items:center;gap:8px;font-size:calc(12px * var(--u));color:var(--c-text-3);height:44px}
 label.switch input{position:absolute;opacity:0;width:0;height:0}
 label.switch .track-sw{width:52px;height:30px;flex:none;border-radius:15px;background:var(--c-bd-ctl);position:relative;transition:background .15s}
 label.switch .track-sw::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}
 label.switch input:checked+.track-sw{background:var(--c-primary)}
 label.switch input:checked+.track-sw::after{left:25px}
 
-.drawer{flex:none;margin:10px 14px;background:var(--c-surface);border:1px solid var(--c-bd);border-radius:12px;padding:8px 18px 10px;box-shadow:0 -4px 12px rgba(28,36,51,.05)}
-.drawer .handle{width:44px;height:5px;border-radius:3px;background:#D7DBE2;margin:0 auto 8px}
-.drawer-row{display:flex;align-items:flex-end;gap:20px}
-.playbtns{display:flex;gap:8px;flex:none;padding-bottom:9px}
-.round-btn{width:calc(44px * var(--u));height:calc(44px * var(--u));border-radius:50%;background:var(--c-bg);border:1px solid var(--c-bd-ctl);color:var(--c-text-2);display:flex;align-items:center;justify-content:center;font-size:calc(15px * var(--u))}
+/* 高度預算（使用者 2026-08-26 指定壓縮）：抽屜整條吃掉的是三張圖的高度，平板橫向上
+   每省 10px 都直接還給繪圖區。拖曳條拿掉（它不能拖，只是裝飾）、速度滑桿換膠囊少一行、
+   自動暫停的標籤與開關併成一列少一行 → 本體 113px 降到 ~85px。 */
+.drawer{flex:none;margin:8px 14px;background:var(--c-surface);border:1px solid var(--c-bd);border-radius:12px;padding:6px 18px 8px;box-shadow:0 -4px 12px rgba(28,36,51,.05)}
+/* 各塊高度不一（時間軸有標題列與刻度列、其他只有一列控制項），靠底對齊會讓播放鈕
+   看起來比滑桿低一截 → 改為垂直置中（使用者 2026-08-26 指定）。
+   置中之後各塊就不能再自己加 padding-bottom 微調，否則等於把中心線推歪。 */
+.drawer-row{display:flex;align-items:center;gap:20px}
+.playbtns{display:flex;gap:8px;flex:none}
+.round-btn{width:44px;height:44px;border-radius:50%;background:var(--c-bg);border:1px solid var(--c-bd-ctl);color:var(--c-text-2);display:flex;align-items:center;justify-content:center;font-size:calc(15px * var(--u))}
 .round-btn.primary{background:var(--c-primary);border-color:var(--c-primary);color:#fff;font-size:calc(16px * var(--u))}
 .round-btn:disabled{background:var(--c-bg);border-color:var(--c-bd);color:var(--c-bd-ctl);cursor:default}
-.speedbox{flex:none;width:190px;padding-bottom:6px}
-.speedbox .head{display:flex;align-items:baseline;justify-content:space-between;font-size:calc(13px * var(--u));margin-bottom:3px}
+/* 速度一律用膠囊（原本橫向是滑桿＋標題列共 55px、直向才是膠囊）：抽屜壓縮後兩種版面
+   統一成膠囊，少掉「播放速度 1.00×」那一行標題。滑桿與標題列留在 DOM 裡不刪，
+   `setSpeed()` 仍會同步它們——重置與鍵盤操作都還走同一條路徑 */
+.speedbox{flex:none;width:auto}
+.speedbox .head,.speedbox input[type="range"]{display:none}
 .speedbox .head .name{font-weight:700;color:var(--c-text-2)}
 .speedbox .head .val{font-weight:700}
-.speed-chips{display:none;gap:6px}
-.speed-chips button{height:44px;width:46px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-text-2);font-size:calc(13px * var(--u));font-weight:700;display:flex;align-items:center;justify-content:center}
+.speed-chips{display:flex;gap:6px}
+/* 高度是元件尺寸（固定 44），寬度是文字容器（由內容決定＋下限）：寫死 46px 的話，
+   大屏字級放大後「0.25×」會撐破膠囊 */
+.speed-chips button{height:44px;min-width:46px;padding:0 8px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-text-2);font-size:calc(13px * var(--u));font-weight:700;display:flex;align-items:center;justify-content:center}
 .speed-chips button[aria-pressed="true"]{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
-.autopause{flex:none;padding-bottom:6px;display:flex;flex-direction:column;gap:3px}
+.autopause{flex:none;display:flex;align-items:center;gap:8px}
 .autopause .name{font-size:calc(13px * var(--u));font-weight:700;color:var(--c-text-2);white-space:nowrap}
 .scrubbox{flex:1;min-width:0}
-.scrubbox .head{display:flex;align-items:baseline;gap:8px;font-size:calc(13px * var(--u));margin-bottom:3px}
+/* 這 3px 間距擺在刻度列上方而不是標題列下方：時間軸上下兩列高度不等（標題 20.7、
+   刻度 15.2），間距放上面會把滑桿軌道推得比整列的中心線低將近 7px，
+   置中之後就看得出播放鈕與軌道沒對齊。移到下面總高不變，軌道回到中心。 */
+.scrubbox .head{display:flex;align-items:baseline;gap:8px;font-size:calc(13px * var(--u));line-height:1.2}
 .scrubbox .head .name{font-weight:700;color:var(--c-text-2)}
 .scrubbox .head .hint{color:var(--c-text-3);font-size:calc(12px * var(--u))}
 .scrubbox .head .now{margin-left:auto;font-weight:700;color:var(--c-primary);font-size:calc(15px * var(--u));white-space:nowrap}
@@ -262,7 +284,7 @@ label.switch input:checked+.track-sw::after{left:25px}
   pointer-events:none;border-radius:0 7px 7px 0;display:none;
   background:repeating-linear-gradient(135deg,#DDE1E7 0 4px,#EEF0F3 4px 8px)}
 .scrub-blocked.on{display:block}
-.scrubbox .marks{display:flex;justify-content:space-between;font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.1}
+.scrubbox .marks{display:flex;justify-content:space-between;font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.1;margin-top:3px}
 
 .bottomnav{height:56px;flex:none;display:flex;align-items:center;padding:0 18px;background:var(--c-nav);gap:6px}
 /* 分頁視覺 40px，上下 padding 撐滿導覽列 → 實際命中 56px（稿 E） */
@@ -280,7 +302,7 @@ label.switch input:checked+.track-sw::after{left:25px}
 .tapecard.focus{border:2px solid var(--c-primary);background:var(--c-primary-soft)}
 .tapecard.off{background:var(--c-bg)}
 .tape-bar{width:6px;flex:none;align-self:stretch;border-radius:9px 0 0 9px}
-.tape-eye,.tape-del{width:calc(44px * var(--u));height:calc(44px * var(--u));flex:none;
+.tape-eye,.tape-del{width:44px;height:44px;flex:none;
   display:flex;align-items:center;justify-content:center;font-size:calc(14px * var(--u))}
 .tape-eye{color:var(--c-primary)}
 .tape-del{color:var(--c-text-3);font-size:calc(13px * var(--u))}
@@ -332,7 +354,7 @@ label.switch input:checked+.track-sw::after{left:25px}
 /* 紙帶區底色是「桌面」，白色紙帶本身畫在 canvas 上（會隨車變長，不是固定的一塊） */
 .tape{width:var(--track-w);flex:none;position:relative;background:#EDF0F4;border-radius:4px;overflow:hidden;touch-action:none}
 .freq-chips{display:flex;gap:6px;flex:none}
-.freq-chips button{width:calc(50px * var(--u));height:44px;border-radius:10px;border:1px solid var(--c-bd-ctl);
+.freq-chips button{min-width:50px;padding:0 8px;height:44px;border-radius:10px;border:1px solid var(--c-bd-ctl);
   background:var(--c-surface);color:var(--c-text-2);font-size:calc(13px * var(--u));font-weight:700;
   display:flex;align-items:center;justify-content:center}
 .freq-chips button[aria-pressed="true"]{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
@@ -384,7 +406,11 @@ label.switch input:checked+.track-sw::after{left:25px}
 
 /* ═══ 5. 響應式：<900px（涵蓋所有 iPad 直向 768/820/834）改上下堆疊（設計稿 C） ═══ */
 @media (min-width:900px) and (max-width:1100px){
-  #screen0.active,#screen1.active{grid-template-columns:calc(262px * var(--u)) 1fr}
+  /* 這一段（分割畫面、小筆電）舞台很緊，保底比桌機的 302 窄，讓三張圖多拿一點寬度；
+     1:3 的比例規則不變，只有在算出的 1fr 比保底還小時才會生效。
+     保底是 280 不是設計稿的 262——實測 262 在 1000px 視窗下，顯示圖層那三個核取
+     只剩 0.6px 餘裕，實機字型比預覽寬一點就會擠爆 */
+  #screen0.active,#screen1.active{grid-template-columns:minmax(280px,1fr) 3fr}
 }
 @media (max-width:899px){
   #screen0.active,#screen1.active{display:flex;flex-direction:column;gap:12px}
@@ -403,11 +429,8 @@ label.switch input:checked+.track-sw::after{left:25px}
   #screen1 .freq-row{position:sticky;bottom:0;z-index:5;background:var(--c-surface);
     padding:6px 0;margin-top:-6px;box-shadow:0 -6px 8px -6px rgba(28,36,51,.18)}
   .drawer-row{flex-wrap:wrap;row-gap:12px}
-  .speedbox{width:auto;padding-bottom:0}
-  .speedbox .head,.speedbox input[type="range"]{display:none}
-  .speed-chips{display:flex}
-  .playbtns{padding-bottom:0;order:3;margin-left:auto}
-  .autopause{padding-bottom:0}
+  /* 速度膠囊原本只在這個斷點啟用，2026-08-26 起兩種版面都用膠囊，規則已移到全域 */
+  .playbtns{order:3;margin-left:auto}
   .scrubbox{flex-basis:100%;min-width:100%;order:9}
 }
 </style>
@@ -439,9 +462,8 @@ label.switch input:checked+.track-sw::after{left:25px}
           <div class="layers-grid">
             <label class="check"><input type="checkbox" id="chkTangent"><span class="box"><i class="fa-solid fa-check"></i></span><span><i>x</i>-<i>t</i> 切線</span></label>
             <label class="check"><input type="checkbox" id="chkArea"><span class="box"><i class="fa-solid fa-check"></i></span><span><i>v</i>-<i>t</i> 面積</span></label>
-            <label class="check"><input type="checkbox" id="chkGuide"><span class="box"><i class="fa-solid fa-check"></i></span><span>參考線</span></label>
+            <label class="check"><input type="checkbox" id="chkGuide" checked><span class="box"><i class="fa-solid fa-check"></i></span><span>參考線</span></label>
           </div>
-          <div class="layers-note">參考線把 <i>x</i>-<i>t</i> 圖上目前的點，水平連到軌道上的車。</div>
         </div>
       </section>
 
@@ -526,7 +548,7 @@ label.switch input:checked+.track-sw::after{left:25px}
           <div class="layers-grid">
             <label class="check"><input type="checkbox" id="tkChkTangent"><span class="box"><i class="fa-solid fa-check"></i></span><span><i>x</i>-<i>t</i> 切線</span></label>
             <label class="check"><input type="checkbox" id="tkChkArea"><span class="box"><i class="fa-solid fa-check"></i></span><span><i>v</i>-<i>t</i> 面積</span></label>
-            <label class="check"><input type="checkbox" id="tkChkGuide"><span class="box"><i class="fa-solid fa-check"></i></span><span>參考線</span></label>
+            <label class="check"><input type="checkbox" id="tkChkGuide" checked><span class="box"><i class="fa-solid fa-check"></i></span><span>參考線</span></label>
           </div>
         </div>
       </section>
@@ -583,7 +605,6 @@ label.switch input:checked+.track-sw::after{left:25px}
   </main>
 
   <div class="drawer" id="drawer">
-    <div class="handle"></div>
     <div class="drawer-row">
       <div class="playbtns">
         <button class="round-btn primary" id="btnPlay" aria-label="播放"><i class="fa-solid fa-play" id="playIcon"></i></button>
@@ -734,7 +755,9 @@ function initState(){
     focus:'A',            // 焦點車：切線／面積畫在誰身上
     open:'A',             // 手風琴：同時只有一張卡展開
     t:0, speed:1, autoPause:false,
-    showTangent:false, showArea:false, showGuide:false,
+    // 參考線預設開（使用者 2026-08-26 指定）：它是「軌道上的車」與「x-t 圖上的點」
+    // 是同一件事的唯一提示，預設關掉等於要學生先發現有這個開關
+    showTangent:false, showArea:false, showGuide:true,
     atExpanded:false,
     // 曾經跑到 10 s：一旦連成線就固定顯示，往回拖時間軸線也不會再消失
     drawn:false,
@@ -1105,6 +1128,7 @@ function drawArea(ctx){
 
   ctx.save(); clipRect(ctx, r);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let lastLabel = null;   // 前一塊數字的位置，用來偵測兩塊的標籤有沒有疊在一起
   for (const [ta, tb] of segs){
     const d = posAt(car, tb) - posAt(car, ta);   // 這一塊的面積，就是這段時間的位移
     const xa = tx(r, ta), xb = tx(r, tb);
@@ -1133,18 +1157,31 @@ function drawArea(ctx){
       ctx.restore();
     }
 
-    // 數字標在該塊中央。塊太窄或太扁就不標，免得兩個數字疊在一起看不懂
+    // 數字一律標出來（使用者 2026-08-26 指定，原本塊太窄或太扁就整個不標）。
+    // 塊裝得下就標在塊中央；裝不下時移到塊的外緣——正面積往上、負面積往下，
+    // 數字與它代表的那塊永遠在零線的同一側，兩塊相鄰也不會認錯。
+    // 不畫引線：v-t 圖上多一條斜線會被學生讀成資料。
     const vMid = velAt(car, (ta + tb) / 2), yMid = yVel(r, vMid);
+    const yA = yVel(r, velAt(car, ta)), yB = yVel(r, velAt(car, tb));
+    const yTop = Math.min(yA, yB, zero), yBot = Math.max(yA, yB, zero);
     const txt = (d >= 0 ? '+' : '−') + fmt(Math.abs(d), 1) + ' m';
     ctx.font = '700 ' + (12 * U) + 'px ' + FONT_STACK;
     const bw = ctx.measureText(txt).width + 10 * U, bh = 18 * U;
-    if (xb - xa >= bw && Math.abs(yMid - zero) >= bh){
-      const mx = (xa + xb) / 2, my = (zero + yMid) / 2;
-      roundRectPath(ctx, mx - bw / 2, my - bh / 2, bw, bh, 4 * U);
-      ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fill();
-      ctx.strokeStyle = hexA(col.line, 0.7); ctx.lineWidth = 1 * U; ctx.stroke();
-      ctx.fillStyle = col.edge; ctx.fillText(txt, mx, my + 0.5);
-    }
+    let mx = (xa + xb) / 2;
+    let my = (yBot - yTop >= bh + 4 * U) ? (zero + yMid) / 2
+           : (d >= 0 ? yTop - bh / 2 - 2 * U : yBot + bh / 2 + 2 * U);
+    // 塊比標籤還窄、或塊貼著繪圖區邊緣時先夾回區內，否則標籤會被 clipRect 切掉半截
+    mx = Math.min(Math.max(mx, r.x + bw / 2 + 1), r.x + r.w - bw / 2 - 1);
+    my = Math.min(Math.max(my, r.y + bh / 2 + 1), r.y + r.h - bh / 2 - 1);
+    // 兩塊都被夾到零線附近時會疊在一起 → 後畫的往外讓開一整個標籤高
+    if (lastLabel && Math.abs(mx - lastLabel.mx) < (bw + lastLabel.bw) / 2
+                  && Math.abs(my - lastLabel.my) < bh)
+      my = lastLabel.my + (my >= lastLabel.my ? bh + 2 * U : -(bh + 2 * U));
+    lastLabel = { mx, my, bw };
+    roundRectPath(ctx, mx - bw / 2, my - bh / 2, bw, bh, 4 * U);
+    ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fill();
+    ctx.strokeStyle = hexA(col.line, 0.7); ctx.lineWidth = 1 * U; ctx.stroke();
+    ctx.fillStyle = col.edge; ctx.fillText(txt, mx, my + 0.5);
   }
   ctx.restore();
 }
@@ -1308,7 +1345,9 @@ function renderTrackLabels(){
 function renderAtLegend(){
   document.getElementById('atLegend').innerHTML = state.cars
     .filter(c => c.visible)
-    .map(c => '<span class="it"><span class="sw" style="background:' + CAR_COLOR[c.id].line + '"></span>' + c.id + '車 ' + fmt(c.a, PARAM.a.dec) + '</span>')
+    // 單位用 <sup> 而非 Unicode ²（DEV_SPEC 鐵律 4），與打點頁的 cm/s² 寫法一致
+    .map(c => '<span class="it"><span class="sw" style="background:' + CAR_COLOR[c.id].line + '"></span>' +
+              c.id + '車 ' + fmt(c.a, PARAM.a.dec) + ' m/s<sup>2</sup></span>')
     .join('');
 }
 
@@ -1540,7 +1579,7 @@ document.getElementById('btnReset').addEventListener('click', () => {
   document.getElementById('chkAutoPause').checked = false;
   document.getElementById('chkTangent').checked = false;
   document.getElementById('chkArea').checked = false;
-  document.getElementById('chkGuide').checked = false;
+  document.getElementById('chkGuide').checked = true;   // 與 initState() 的 showGuide 一致
   for (const b of document.querySelectorAll('#speedChips button'))
     b.setAttribute('aria-pressed', String(b.dataset.speed === '1'));
   document.getElementById('speedVal').textContent = '1.00×';
@@ -1666,14 +1705,31 @@ window.addEventListener('resize', renderZoom);
 
 const appEl = document.getElementById('app');
 const fullBtn = document.getElementById('btnFull');
+// 判斷「現在是不是全螢幕」必須三個一起看：iPadOS Safari 對非影片元素進入全螢幕後，
+// 有些版本不設定 webkitFullscreenElement，只把 document.webkitIsFullScreen 設成 true。
+// 只看 fullscreenElement 的話，第二次按下會被判成「還沒全螢幕」而再請求進入一次——
+// 使用者的感受就是「這顆鈕取消不了全螢幕」。
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement
+                        || document.webkitIsFullScreen);
+// 圖示與 aria-label 跟著狀態走。原本一直是 fa-expand，看不出按了有沒有效，
+// 也不知道再按一次會發生什麼事
+function syncFullBtn(){
+  const on = isFull();
+  fullBtn.querySelector('i').className = 'fa-solid ' + (on ? 'fa-compress' : 'fa-expand');
+  fullBtn.setAttribute('aria-label', on ? '離開全螢幕' : '全螢幕');
+}
 if (appEl.requestFullscreen || appEl.webkitRequestFullscreen){
   fullBtn.addEventListener('click', () => {
-    if (document.fullscreenElement || document.webkitFullscreenElement){
-      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-    } else {
-      (appEl.requestFullscreen || appEl.webkitRequestFullscreen).call(appEl);
-    }
+    // 新版回 Promise、舊版 webkit 回 undefined，統一包起來；被拒時（權限政策、
+    // 非使用者手勢）不要讓未處理的 rejection 冒出去
+    const fn = isFull() ? (document.exitFullscreen || document.webkitExitFullscreen).bind(document)
+                        : (appEl.requestFullscreen || appEl.webkitRequestFullscreen).bind(appEl);
+    Promise.resolve(fn()).catch(() => {});
   });
+  // 用 Esc 或系統手勢離開時也要把圖示切回來，否則狀態與畫面對不上
+  for (const ev of ['fullscreenchange', 'webkitfullscreenchange'])
+    document.addEventListener(ev, syncFullBtn);
+  syncFullBtn();
 } else fullBtn.style.display = 'none';
 
 /* ═══ 7. 初始化 ═══ */
@@ -1682,6 +1738,11 @@ if (appEl.requestFullscreen || appEl.webkitRequestFullscreen){
 // （站 6 公尺外看）需要完全不同的字級，光看 CSS 寬度分不出來——改用實體像素
 // （screen.width × DPR）判斷裝置級別：桌機 1920、iPad 2160／2360、教室大屏 3840。
 // 這樣不管大屏是 DPR 1 的 3840 還是 Windows 200% 縮放後的 1920，都判得出來。
+// 裝置級別＝實體像素，不是 CSS 寬度：同樣 1920 CSS px，24 吋桌機與 75 吋大屏差一倍字級
+function physPx(){
+  const sw = Math.max(window.screen.width || 0, window.innerWidth || 0) || 1280;
+  return sw * (window.devicePixelRatio || 1);
+}
 function uiScale(){
   // 網址帶 ?u=1.8 直接指定倍率，蓋過自動判定。教室大屏把帶參數的網址存成書籤就好——
   // 自動判定依賴 screen API，而它在部分環境要等很久才有值、甚至一直回 0，不能當唯一手段。
@@ -1691,7 +1752,7 @@ function uiScale(){
   if (forced > 0) return clampScale(forced);
   const sw = Math.max(window.screen.width || 0, window.innerWidth || 0) || 1280;
   const cssW = window.innerWidth || sw;
-  const phys = sw * (window.devicePixelRatio || 1);   // 實體像素＝裝置級別
+  const phys = physPx();   // 實體像素＝裝置級別
   let u;
   if (phys >= 3000){
     // 教室觸控大屏。要補償的是「一個 CSS px 等於幾毫米」，那取決於系統縮放設定：
@@ -1854,7 +1915,9 @@ function tkInitState(){
     t:0, drawn:false,
     pauseOnTick:false,
     // 教學輔助疊層一律預設關（DESIGN_SPEC 第 4 節）
-    showTangent:false, showArea:false, showGuide:false,
+    // 參考線預設開（使用者 2026-08-26 指定）：它是「軌道上的車」與「x-t 圖上的點」
+    // 是同一件事的唯一提示，預設關掉等於要學生先發現有這個開關
+    showTangent:false, showArea:false, showGuide:true,
     atExpanded:false,
     manualX:0,                    // 手動拉紙時車的當前位置
     // 手動拉紙每 0.1 s 記一格，回放時線性插值。長度固定 101，不是會無限成長的
@@ -2382,17 +2445,33 @@ function tkDrawArea(ctx){
   ctx.save(); clipRect(ctx, r);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = '700 ' + (10 * U) + 'px ' + FONT_STACK;
+  let lastLabel = null;   // 與分頁 1 的 drawArea 同一套規則：數字一律標，擠不下就往外讓
   for (let k = 1; k <= nMax; k++){
     const xa = tkTx(r, tkTickT(k - 1)), xb = tkTx(r, tkTickT(k)), y = tkYVel(r, tkSegV(tape, k));
     ctx.fillStyle = hexA(col.line, .2);
     ctx.fillRect(xa, y, xb - xa, zero - y);
     ctx.strokeStyle = hexA(col.line, .85); ctx.lineWidth = 1.2 * U; ctx.setLineDash([]);
     ctx.strokeRect(px(xa), px(y), Math.round(xb - xa), Math.round(zero - y));
+    // 數字一律標出來（使用者 2026-08-26 指定）。原本的條件連「速度為負」的格子都
+    // 永遠標不出來——zero - y 在那時是負數，恆小於門檻。
     const txt = fmt(tkTickX(tape, k) - tkTickX(tape, k - 1), 1);
-    if (xb - xa >= ctx.measureText(txt).width + 8 * U && zero - y >= 17 * U){
-      ctx.fillStyle = col.edge;
-      ctx.fillText(txt, (xa + xb) / 2, (zero + y) / 2);
-    }
+    const bw = ctx.measureText(txt).width + 8 * U, bh = 14 * U;
+    const yTop = Math.min(y, zero), yBot = Math.max(y, zero);
+    let mx = (xa + xb) / 2;
+    let my = (yBot - yTop >= bh + 3 * U) ? (zero + y) / 2
+           : (y <= zero ? yTop - bh / 2 - 2 * U : yBot + bh / 2 + 2 * U);
+    mx = Math.min(Math.max(mx, r.x + bw / 2 + 1), r.x + r.w - bw / 2 - 1);
+    my = Math.min(Math.max(my, r.y + bh / 2 + 1), r.y + r.h - bh / 2 - 1);
+    // 打點頻率 2 Hz 時格寬只剩 ~25px，相鄰兩格的數字會左右相碰 → 交替往外錯開一列
+    if (lastLabel && Math.abs(mx - lastLabel.mx) < (bw + lastLabel.bw) / 2
+                  && Math.abs(my - lastLabel.my) < bh)
+      my = lastLabel.my + (my >= lastLabel.my ? bh : -bh);
+    lastLabel = { mx, my, bw };
+    // 移出格子後字會落在別格的填色或格線上，補一層淡白底才讀得到
+    ctx.fillStyle = 'rgba(255,255,255,.82)';
+    ctx.fillRect(mx - bw / 2, my - bh / 2, bw, bh);
+    ctx.fillStyle = col.edge;
+    ctx.fillText(txt, mx, my);
   }
   ctx.restore();
 }
@@ -2694,11 +2773,12 @@ function tkRenderAxes(){
   document.getElementById('tkTAxisAt').innerHTML = marks;
 }
 
-/* 自製下拉選單：原生 select 的選項列高與選中樣式在 Windows 上控制不了 */
-function ddHtml(value, options, disabled){
+/* 自製下拉選單：原生 select 的選項列高與選中樣式在 Windows 上控制不了。
+   labelText 用來蓋掉按鈕上的文字（手動拉紙時紙帶不跑情境，顯示情境名會誤導） */
+function ddHtml(value, options, disabled, labelText){
   const cur = options.find(o => String(o.v) === String(value));
   return '<button class="dd-btn" aria-expanded="false"' + (disabled ? ' disabled' : '') + '>' +
-    '<span class="v">' + (cur ? cur.label : '—') + '</span>' +
+    '<span class="v">' + (labelText || (cur ? cur.label : '—')) + '</span>' +
     '<i class="fa-solid fa-chevron-down"></i></button>' +
     '<div class="dd-list" role="listbox">' +
     options.map(o => '<button role="option" data-v="' + o.v + '" aria-selected="' +
@@ -2740,7 +2820,8 @@ function tkRenderTapes(){
       '<div class="tape-bar" style="background:' + (tape.visible ? col.line : '#C9C2E6') + '"></div>' +
       eye +
       '<span class="tape-nm">' + tape.id + '</span>' +
-      '<div class="dd" data-tape="' + tape.id + '">' + ddHtml(tape.scene, sceneOpts, manual) + '</div>' +
+      '<div class="dd" data-tape="' + tape.id + '">' +
+        ddHtml(tape.scene, sceneOpts, manual, manual ? '手動拉紙' : null) + '</div>' +
       '<button class="tape-del" data-act="del" aria-label="刪除' + tape.id + '紙帶"' +
         (tkS.tapes.length <= 1 ? ' disabled' : '') + '><i class="fa-solid fa-trash-can"></i></button>' +
     '</div>';
@@ -2752,8 +2833,9 @@ function tkRenderTapes(){
   for (const b of document.querySelectorAll('.tk-freq button'))
     b.setAttribute('aria-pressed', String(+b.dataset.freq === tkS.freq));
 
+  // 「手動拉紙」四個字已經在下拉上，這裡再寫一次是同一畫面上的重複資訊
   document.getElementById('tkCount').textContent =
-    manual ? '手動拉紙 · 1 條' : '顯示 ' + tkVisibleTapes().length + '／' + tkS.tapes.length + ' 條';
+    manual ? '1 條' : '顯示 ' + tkVisibleTapes().length + '／' + tkS.tapes.length + ' 條';
   // 手動拉紙只能一條，新增鈕整顆收起來，不留一顆按不動的鈕在那裡
   const addBtn = document.getElementById('tkBtnAdd');
   addBtn.style.display = manual ? 'none' : '';
@@ -2832,8 +2914,9 @@ function tkReset(){
   tkS.mode = mode; tkS.freq = freq;
   for (const tape of tkS.tapes){ tape.selA = null; tape.selB = null; }
   // checked 屬性、開關文字、重置還原值三處必須一致（DESIGN_SPEC 第 4 節）
-  for (const id of ['tkChkTangent', 'tkChkArea', 'tkChkGuide', 'tkChkPause'])
+  for (const id of ['tkChkTangent', 'tkChkArea', 'tkChkPause'])
     document.getElementById(id).checked = false;
+  document.getElementById('tkChkGuide').checked = true;   // 與 tkInitState() 的 showGuide 一致
   document.getElementById('tkPauseTxt').textContent = '關';
   tkCloseZoom();   // 膠囊的 aria-pressed 由下面的 tkSyncAll() 一起同步
   setSpeed(1);
