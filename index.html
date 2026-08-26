@@ -1713,6 +1713,24 @@ const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenE
                         || document.webkitIsFullScreen);
 // 圖示與 aria-label 跟著狀態走。原本一直是 fa-expand，看不出按了有沒有效，
 // 也不知道再按一次會發生什麼事
+// 畫面「實際上」是不是還佔滿整個螢幕。教室大屏那台的 exitFullscreen 會回報成功、
+// 把 fullscreenElement 設成 null（圖示都切回展開了），畫面卻沒離開全螢幕——
+// 狀態機在那裡不可信，只能直接量視窗高度。留 2px 容差給四捨五入。
+const isViewportFull = () => window.innerHeight >= (window.screen.height || 0) - 2;
+// 退出全螢幕：依序試每一種實作，而不是只呼叫存在的第一個。
+// 使用者 2026-08-26 在教室大屏實測：按下後 fullscreenchange 有派送、fullscreenElement
+// 變成 null、圖示切回展開，但畫面沒退出，之後狀態又自己跳回全螢幕——標準版 exitFullscreen
+// 只更新了狀態機。所以補一次 webkit 版。筆電與平板走到那裡時早就退出了，
+// 第二次呼叫會直接 reject，被 catch 掉，不影響正常瀏覽器。
+function exitFull(){
+  const fns = [document.exitFullscreen, document.webkitExitFullscreen,
+               document.mozCancelFullScreen, document.msExitFullscreen]
+              .filter(f => typeof f === 'function');
+  if (!fns.length) return;
+  const run = i => { try { Promise.resolve(fns[i].call(document)).catch(() => {}); } catch (e) {} };
+  run(0);
+  if (fns.length > 1) setTimeout(() => { if (isViewportFull()) run(1); }, 150);
+}
 function syncFullBtn(){
   const on = isFull();
   fullBtn.querySelector('i').className = 'fa-solid ' + (on ? 'fa-compress' : 'fa-expand');
@@ -1720,11 +1738,11 @@ function syncFullBtn(){
 }
 if (appEl.requestFullscreen || appEl.webkitRequestFullscreen){
   fullBtn.addEventListener('click', () => {
+    if (isFull()) { exitFull(); return; }
     // 新版回 Promise、舊版 webkit 回 undefined，統一包起來；被拒時（權限政策、
     // 非使用者手勢）不要讓未處理的 rejection 冒出去
-    const fn = isFull() ? (document.exitFullscreen || document.webkitExitFullscreen).bind(document)
-                        : (appEl.requestFullscreen || appEl.webkitRequestFullscreen).bind(appEl);
-    Promise.resolve(fn()).catch(() => {});
+    const enter = (appEl.requestFullscreen || appEl.webkitRequestFullscreen).bind(appEl);
+    try { Promise.resolve(enter()).catch(() => {}); } catch (e) {}
   });
   // 用 Esc 或系統手勢離開時也要把圖示切回來，否則狀態與畫面對不上
   for (const ev of ['fullscreenchange', 'webkitfullscreenchange'])
