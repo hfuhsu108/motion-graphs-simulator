@@ -179,6 +179,14 @@ scrubber 本身階段 1 已完成（只改 `state.t`、拖曳時自動暫停、�
 - **`file://` 雙擊直開**：工具把專案外的 file:// 渲染成靜態快照。
   替代做法：靜態證據（無 `fetch`／`XMLHttpRequest`、無 `/` 開頭絕對路徑、唯一外部資源是 FA CDN）。
 - **4× CPU throttling 的 fps**：量不到，列給使用者。
+- **全螢幕（Fullscreen API）**：pane 的 iframe 會拒絕 `requestFullscreen`，但
+  `document.fullscreenEnabled` 仍回報 `true`。點下去之後 `fullscreenElement` 還是 `null`，
+  此時任何「已退出全螢幕」的斷言都是**假綠燈**（沒進去過，當然不在全螢幕）。
+  替代做法：攔截四個 exit API 記錄呼叫序列、偽造 `webkitIsFullScreen` 與 `window.innerHeight`，
+  驗分支選擇邏輯而不是驗端對端行為。
+- **教室大屏的瀏覽器行為**：完全無法在開發端模擬。**筆電與 iPad 通過不代表大屏通過**——
+  2026-08-26 的全螢幕退出 bug 只在大屏出現（見 8.14 D8）。涉及全螢幕、DPR、投影顯示的改動，
+  一律在交付說明把大屏標成「待實測」。三種裝置的分工見專案 memory `sim-test-devices`。
 
 **能驗而且該驗的**（用 `javascript_tool` 做機器斷言，不要只看截圖）：
 
