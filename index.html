@@ -19,12 +19,15 @@
   --c-bg:#F6F7F9;
   --c-surface:#FFFFFF;
   --c-bd:#E2E5EA;
-  --c-bd-ctl:#CFD5DD;
+  /* 控制項邊框：原 #CFD5DD 在白底只有 1.48:1，遠低於「非文字元素 ≥3:1」，
+     學生看不出輸入框與開關是可操作的元件。加深至 3.10:1（DESIGN_SPEC 第 2 節） */
+  --c-bd-ctl:#8A93A1;
   --c-text:#1C2433;
   --c-text-2:#445062;
   --c-text-3:#67717F;
   --c-ok:#24794C;
-  --c-warn:#D64545;
+  /* 警示紅：原 #D64545 為 4.38:1，未達文字門檻 4.5。加深至 5.46:1 */
+  --c-warn:#C62F2F;
   --c-track-bg:#445062;
   --c-slider-bg:#D3D9E1;
   /* 版面固定值：三張圖的繪圖區左邊界一律 290＝48（縱軸標）+10+222（軌道）+10。
@@ -72,10 +75,17 @@ button:active,label.check:active,label.switch:active,.navtab:active,.at-bar:acti
 .topbar{height:50px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;background:var(--c-surface);border-bottom:1px solid var(--c-bd)}
 .logo{width:28px;height:28px;flex:none;border-radius:7px;background:var(--c-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:calc(14px * var(--u))}
 .title{font-size:calc(17px * var(--u));font-weight:700}
-.topbar .actions{margin-left:auto;display:flex}
-/* 視覺維持規範的 34px，外層撐到 44×44 命中區（稿 G） */
-.icon-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--c-text-2)}
-.icon-btn i{width:34px;height:34px;border-radius:8px;border:1px solid #D7DBE2;background:var(--c-surface);display:flex;align-items:center;justify-content:center;font-size:calc(15px * var(--u))}
+.topbar .actions{margin-left:auto;display:flex;gap:12px}
+/* 命中區一律用 ::after 撐到 44×44（DEV_SPEC 鐵律 6）：視覺尺寸 ≠ 命中區。
+   三份模擬統一走這個機制，不再用「外層容器撐大」或 ::before。
+   .track-zoom 自己是 position:absolute、已能當定位容器，所以不放進下面的 relative 清單 */
+.icon-btn,.navtab,.chip{position:relative}
+.icon-btn::after,.navtab::after,.chip::after,.track-zoom::after{
+  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:max(100%,44px);height:max(100%,44px);
+}
+/* 視覺 34px。固定尺寸容器內的圖示字級不乘 --u，否則會撐破容器 */
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);display:flex;align-items:center;justify-content:center;color:var(--c-text-2);font-size:14px}
 
 main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 .screen{display:none;height:100%}
@@ -164,8 +174,6 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
   width:30px;height:30px;border-radius:8px;
   background:rgba(255,255,255,.9);border:1px solid var(--c-bd-ctl);color:var(--c-text-2);
   display:flex;align-items:center;justify-content:center;font-size:calc(13px * var(--u))}
-.track-zoom::before{content:'';position:absolute;left:50%;top:50%;
-  width:44px;height:44px;transform:translate(-50%,-50%)}
 .track-zoom:active{background:#E8EBF0}
 .plot{flex:1;min-width:0;position:relative;border-left:calc(2px * var(--u)) solid var(--c-bd-ctl)}
 .plot .axname{position:absolute;left:calc(6px * var(--u));top:calc(2px * var(--u));font-size:calc(12px * var(--u));font-weight:700;color:var(--c-text-2)}
@@ -227,7 +235,8 @@ input[type="range"]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;b
 .range-lg::-moz-range-track{height:10px;border-radius:5px}
 .range-lg::-moz-range-thumb{width:26px;height:26px;border-width:3px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 
-label.check{display:flex;align-items:center;gap:8px;font-size:calc(13px * var(--u));color:var(--c-text-2);height:44px;margin:0}
+/* min-height 而非 height：字級放大或文字折行時要能長高，固定高度會把文字擠出去 */
+label.check{display:flex;align-items:center;gap:8px;font-size:calc(13px * var(--u));color:var(--c-text-2);min-height:44px;margin:0}
 label.check input{position:absolute;opacity:0;width:0;height:0}
 label.check .box{width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid var(--c-bd-ctl);background:var(--c-surface);display:flex;align-items:center;justify-content:center;color:#fff;font-size:calc(12px * var(--u))}
 label.check input:checked+.box{background:var(--c-primary);border-color:var(--c-primary)}
@@ -256,14 +265,20 @@ label.switch input:checked+.track-sw::after{left:25px}
    統一成膠囊，少掉「播放速度 1.00×」那一行標題。滑桿與標題列留在 DOM 裡不刪，
    `setSpeed()` 仍會同步它們——重置與鍵盤操作都還走同一條路徑 */
 .speedbox{flex:none;width:auto}
-.speedbox .head,.speedbox input[type="range"]{display:none}
-.speedbox .head .name{font-weight:700;color:var(--c-text-2)}
-.speedbox .head .val{font-weight:700}
-.speed-chips{display:flex;gap:6px}
-/* 高度是元件尺寸（固定 44），寬度是文字容器（由內容決定＋下限）：寫死 46px 的話，
-   大屏字級放大後「0.25×」會撐破膠囊 */
-.speed-chips button{height:44px;min-width:46px;padding:0 8px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);color:var(--c-text-2);font-size:calc(13px * var(--u));font-weight:700;display:flex;align-items:center;justify-content:center}
-.speed-chips button[aria-pressed="true"]{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
+/* 分段切換器（DESIGN_SPEC 第 4 節）。判準：膠囊改的是模擬的參數，分段切換器換的是
+   使用者看到的東西——播放速度倍率與紙帶頁的自動／手動拉紙都屬後者。 */
+/* flex:none 不可省：放在縱向 flex 容器（如可捲動的 .scene-card）內會被 flex-shrink
+   壓掉零點幾 px，總高就不再是 44（實測 43.3） */
+.seg{display:inline-flex;flex:none;background:var(--c-bg);border:1px solid var(--c-bd-ctl);border-radius:10px;padding:3px}
+/* 兩態字重都是 700：字重一變字寬就變，相鄰區段會左右跳動（DEV_SPEC 3.2 版面不得依賴精確字寬） */
+.seg button{position:relative;flex:1 0 auto;min-width:56px;height:36px;padding:0 14px;border-radius:8px;
+  font-size:calc(13px * var(--u));font-weight:700;color:var(--c-text-3);
+  display:flex;align-items:center;justify-content:center;white-space:nowrap;transition:background .15s,color .15s}
+/* 這個陰影是 DESIGN_SPEC 第 6 節的三個例外之一（抽屜、滑桿把手、分段切換器選中格） */
+.seg button[aria-pressed="true"]{background:var(--c-surface);color:var(--c-text);box-shadow:0 1px 3px rgba(28,36,51,.16)}
+/* 視覺 36、命中區 44（鐵律 6） */
+.seg button::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:100%;height:44px;min-width:44px}
 .autopause{flex:none;display:flex;align-items:center;gap:8px}
 .autopause .name{font-size:calc(13px * var(--u));font-weight:700;color:var(--c-text-2);white-space:nowrap}
 .scrubbox{flex:1;min-width:0}
@@ -286,11 +301,10 @@ label.switch input:checked+.track-sw::after{left:25px}
 .scrub-blocked.on{display:block}
 .scrubbox .marks{display:flex;justify-content:space-between;font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.1;margin-top:3px}
 
-.bottomnav{height:56px;flex:none;display:flex;align-items:center;padding:0 18px;background:var(--c-nav);gap:6px}
+.bottomnav{height:56px;flex:none;display:flex;align-items:center;padding:0 18px;background:var(--c-nav);gap:10px}
 /* 分頁視覺 40px，上下 padding 撐滿導覽列 → 實際命中 56px（稿 E） */
-.navtab{white-space:nowrap;flex:none;height:56px;padding:0 18px;color:var(--c-nav-idle);font-size:calc(13.5px * var(--u));display:flex;align-items:center;gap:8px}
-.navtab span{display:flex;align-items:center;gap:8px;height:40px;padding:0 18px;margin:0 -18px;border-radius:8px}
-.navtab[aria-selected="true"] span{background:var(--c-primary);color:#fff;font-weight:700}
+.navtab{white-space:nowrap;flex:none;height:38px;padding:0 18px;border-radius:8px;color:var(--c-nav-idle);font-size:calc(13.5px * var(--u));display:flex;align-items:center}
+.navtab[aria-selected="true"]{background:var(--c-primary);color:#fff;font-weight:700}
 
 /* ── 打點計時器分頁：左欄紙帶清單、下拉選單、紙帶區、抽屜的打點頻率 ── */
 .scene-card{flex:1;min-height:0;padding:12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
@@ -319,10 +333,7 @@ label.switch input:checked+.track-sw::after{left:25px}
   #screen1 .tape-list{flex:1 1 auto;min-height:56px;overflow-y:auto}
 }
 /* 操作模式：兩個互斥選項用膠囊（DESIGN_SPEC「2–4 個短選項→膠囊」） */
-.mode-chips{display:flex;gap:8px;flex:none}
-.mode-chips button{flex:1;height:44px;border-radius:10px;border:1px solid var(--c-bd-ctl);background:var(--c-surface);
-  color:var(--c-text-2);font-size:calc(13px * var(--u));font-weight:700;display:flex;align-items:center;justify-content:center}
-.mode-chips button[aria-pressed="true"]{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
+/* 自動／手動拉紙改用上面的 .seg（換的是使用者看到的東西，不是模擬參數） */
 .freq-row{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px}
 
 /* 下拉選單（DESIGN_SPEC 第 4 節）。規範的選項列高是 42px，這裡用 44——
@@ -354,17 +365,17 @@ label.switch input:checked+.track-sw::after{left:25px}
 /* 紙帶區底色是「桌面」，白色紙帶本身畫在 canvas 上（會隨車變長，不是固定的一塊） */
 .tape{width:var(--track-w);flex:none;position:relative;background:#EDF0F4;border-radius:4px;overflow:hidden;touch-action:none}
 .freq-chips{display:flex;gap:6px;flex:none}
-.freq-chips button{min-width:50px;padding:0 8px;height:44px;border-radius:10px;border:1px solid var(--c-bd-ctl);
-  background:var(--c-surface);color:var(--c-text-2);font-size:calc(13px * var(--u));font-weight:700;
-  display:flex;align-items:center;justify-content:center}
-.freq-chips button[aria-pressed="true"]{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
+/* 打點頻率是「挑參數值」，所以用膠囊而不是分段切換器（DESIGN_SPEC 第 4 節的選擇準則） */
+.chip{white-space:nowrap;height:40px;padding:0 14px;border-radius:20px;background:var(--c-surface);border:1px solid var(--c-bd-ctl);color:var(--c-text-2);font-size:calc(13px * var(--u));display:flex;align-items:center;justify-content:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--c-primary);border-color:var(--c-primary);color:#fff;font-weight:700}
 
 .modal{position:fixed;inset:0;background:rgba(28,36,51,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
 .modal.open{display:flex}
 .modal .box{background:var(--c-surface);border-radius:14px;padding:24px 26px;max-width:540px;max-height:80%;overflow-y:auto;user-select:text;-webkit-user-select:text}
 .modal h3{font-size:calc(17px * var(--u));margin:0 0 10px}
 .modal p{font-size:calc(13.5px * var(--u));color:var(--c-text-2);margin:0 0 10px;line-height:1.75}
-.modal .close{margin-left:auto;display:block;height:calc(44px * var(--u));padding:0 18px;border-radius:10px;background:var(--c-primary);color:#fff;font-size:calc(13px * var(--u));font-weight:700}
+/* 命中區是固定的 44，不隨 --u 縮放：另兩份模擬都是固定值，這裡是三份中唯一會放大的 */
+.modal .close{margin-left:auto;display:block;height:44px;padding:0 18px;border-radius:10px;background:var(--c-primary);color:#fff;font-size:calc(13px * var(--u));font-weight:700}
 
 /* 軌道放大檢視：整個視窗高度都給軌道，每秒點的縱向間距才拉得開到能互相比較 */
 .zoom-modal .zbox{background:var(--c-surface);border-radius:14px;padding:calc(14px * var(--u));
@@ -393,11 +404,10 @@ label.switch input:checked+.track-sw::after{left:25px}
   .car-btns .btn-del:not(:disabled):hover{color:var(--c-warn)}
   .navtab[aria-selected="false"]:hover{color:#fff}
   .at-bar:hover .caret{color:var(--c-primary)}
-  .speed-chips button[aria-pressed="false"]:hover,
-  .freq-chips button[aria-pressed="false"]:hover,
-  .mode-chips button[aria-pressed="false"]:hover,
+  .chip[aria-pressed="false"]:hover,
   .zrot:hover,
   .dd-btn:not(:disabled):hover{border-color:var(--c-primary)}
+  .seg button[aria-pressed="false"]:hover{color:var(--c-text-2)}
   .dd-list button[aria-selected="false"]:hover{background:var(--c-bg)}
   .tape-eye:hover{color:var(--c-primary)}
   .tape-del:not(:disabled):hover{color:var(--c-warn)}
@@ -525,7 +535,7 @@ label.switch input:checked+.track-sw::after{left:25px}
       <section class="settings">
         <div class="card scene-card">
           <!-- 操作模式擺在最上面：它決定下面會不會出現多條紙帶，順序要與因果一致 -->
-          <div class="mode-chips" id="tkModeChips">
+          <div class="seg" id="tkModeChips" role="group" aria-label="拉紙方式">
             <button data-mode="scene" aria-pressed="true">自動拉紙</button>
             <button data-mode="manual" aria-pressed="false">手動拉紙</button>
           </div>
@@ -537,9 +547,9 @@ label.switch input:checked+.track-sw::after{left:25px}
           <div class="freq-row">
             <span class="t">打點頻率 (Hz)</span>
             <div class="freq-chips tk-freq">
-              <button data-freq="0.5" aria-pressed="false">0.5</button>
-              <button data-freq="1" aria-pressed="true">1</button>
-              <button data-freq="2" aria-pressed="false">2</button>
+              <button class="chip" data-freq="0.5" aria-pressed="false">0.5</button>
+              <button class="chip" data-freq="1" aria-pressed="true">1</button>
+              <button class="chip" data-freq="2" aria-pressed="false">2</button>
             </div>
           </div>
         </div>
@@ -611,10 +621,10 @@ label.switch input:checked+.track-sw::after{left:25px}
         <button class="round-btn" id="btnStep" aria-label="單步前進 1 秒"><i class="fa-solid fa-forward-step"></i></button>
         <button class="round-btn" id="btnReset" aria-label="重置"><i class="fa-solid fa-rotate-left"></i></button>
       </div>
+      <!-- 速度統一為分段切換器三檔（DESIGN_SPEC 第 4、6 節）。原本 .head 與滑桿都是
+           display:none、只有三顆按鈕看得見，JS 卻還在維護那支滑桿，一併清掉 -->
       <div class="speedbox">
-        <div class="head"><span class="name">播放速度</span><span class="val" id="speedVal">1.00×</span></div>
-        <input type="range" id="speedSlider" min="0.25" max="2" step="0.25" value="1" aria-label="播放速度倍率">
-        <div class="speed-chips" id="speedChips">
+        <div class="seg" id="segSpeed" role="group" aria-label="播放速度">
           <button data-speed="0.5" aria-pressed="false">0.5×</button>
           <button data-speed="1" aria-pressed="true">1×</button>
           <button data-speed="2" aria-pressed="false">2×</button>
@@ -645,8 +655,8 @@ label.switch input:checked+.track-sw::after{left:25px}
   </div>
 
   <nav class="bottomnav" id="nav">
-    <button class="navtab" data-screen="0" aria-selected="true"><span><i class="fa-solid fa-car-side"></i>車子</span></button>
-    <button class="navtab" data-screen="1" aria-selected="false"><span><i class="fa-solid fa-stopwatch"></i>打點計時器</span></button>
+    <button class="navtab" data-screen="0" aria-selected="true">車子</button>
+    <button class="navtab" data-screen="1" aria-selected="false">打點計時器</button>
   </nav>
 
   <!-- 放大檢視放在 .app 內：全螢幕投影時進入 fullscreen 的是 #app，
@@ -718,13 +728,16 @@ const CAR_IDS = ['A', 'B', 'C', 'D'];
 const CAR_COLOR = {
   A: { line:'#2A6FDB', edge:'#1E57B0', track:'#7DB0F0', tick:'#A9CBF5' },
   B: { line:'#2F9E63', edge:'#227A4B', track:'#6FD39B', tick:'#9FE3BD' },
-  C: { line:'#D9761A', edge:'#B3651A', track:'#F0AA5E', tick:'#F6C795' },
+  // C 車橘原 #D9761A 在頁面底只有 2.99:1，差一點就過不了 3:1；統一取序列橘定案值 #D2700F（3.46／3.23）。
+  // edge 仍比 line 深、track/tick 是深色軌道上的亮階，與 line 無直接關係，都不動
+  C: { line:'#D2700F', edge:'#B3651A', track:'#F0AA5E', tick:'#F6C795' },
   D: { line:'#8B5CF6', edge:'#6B3FD4', track:'#A98BF8', tick:'#C9B6FA' },
 };
 const C = {
   trackDiv:'rgba(246,247,249,.14)',   // 軌道 4 欄的分隔線
   trackZero:'rgba(246,247,249,.85)',  // 軌道 0 m 基準線
-  axis:'#B4BCC7', grid:'#D5DAE1', cursor:'#1C2433', off:'#8A94A6',
+  // 座標軸原 #B4BCC7 只有 1.92:1，未達非文字元素的 3:1。加深至 3.77:1（DESIGN_SPEC 第 2 節）
+  axis:'#7A8496', grid:'#D5DAE1', cursor:'#1C2433', off:'#8A94A6',
 };
 const PARAM = {
   // 三個滑桿都只有 5 個檔位（step ＝ 全幅的四分之一），拖曳時一格一格跳，
@@ -1575,29 +1588,21 @@ document.getElementById('btnReset').addEventListener('click', () => {
   const cars = state.cars, focus = state.focus, open = state.open, atExp = state.atExpanded;
   state = initState();
   state.cars = cars; state.focus = focus; state.open = open; state.atExpanded = atExp;
-  document.getElementById('speedSlider').value = 1;
   document.getElementById('chkAutoPause').checked = false;
   document.getElementById('chkTangent').checked = false;
   document.getElementById('chkArea').checked = false;
   document.getElementById('chkGuide').checked = true;   // 與 initState() 的 showGuide 一致
-  for (const b of document.querySelectorAll('#speedChips button'))
-    b.setAttribute('aria-pressed', String(b.dataset.speed === '1'));
-  document.getElementById('speedVal').textContent = '1.00×';
+  setSpeed(1);   // 單一入口：state.speed 與分段切換器的選中態一起回到 1×
   document.getElementById('autoPauseTxt').textContent = '關';
-  refreshFill(document.getElementById('speedSlider'));
   renderCars(); syncAll();
 });
 
 function setSpeed(v){
   state.speed = v;
-  document.getElementById('speedVal').textContent = v.toFixed(2) + '×';
-  const s = document.getElementById('speedSlider');
-  s.value = v; refreshFill(s);
-  for (const b of document.querySelectorAll('#speedChips button'))
+  for (const b of document.querySelectorAll('#segSpeed button'))
     b.setAttribute('aria-pressed', String(+b.dataset.speed === v));
 }
-document.getElementById('speedSlider').addEventListener('input', e => setSpeed(+e.target.value));
-document.getElementById('speedChips').addEventListener('click', e => {
+document.getElementById('segSpeed').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   setSpeed(+b.dataset.speed);
 });
@@ -3178,7 +3183,6 @@ function tkInit(){
   tkRenderAxes();
 }
 
-refreshFill(document.getElementById('speedSlider'));
 refreshFill(scrubber);
 renderCars();
 renderAxes();
