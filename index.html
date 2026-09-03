@@ -668,7 +668,7 @@ label.switch input:checked+.track-sw::after{left:25px}
     <div class="zbox">
       <div class="zhead">
         <span class="zt">軌道放大</span>
-        <span class="zsub">每一欄是一台車，相鄰兩點相隔 1 秒</span>
+        <span class="zsub">每一欄是一台車，相鄰兩點相隔 1 秒　·　點兩個點可以量距離</span>
         <span class="ztime"><i>t</i> = <span id="zoomTime">0.0</span> s</span>
         <button class="zclose" id="btnCloseZoom" aria-label="關閉放大檢視"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -704,6 +704,7 @@ label.switch input:checked+.track-sw::after{left:25px}
          ② <i>v</i>-<i>t</i> 曲線與橫軸圍出的面積，就是 <i>x</i>-<i>t</i> 圖同一段時間的高度落差。<br>
          ③ <i>a</i>-<i>t</i> 是一條水平線，而它決定了 <i>v</i>-<i>t</i> 的斜率。</p>
       <p>拖曳底部時間軸可以停在任一時刻討論；最多可以放 4 台車互相對照。</p>
+      <p>點軌道上任意兩個軌跡點，可以量出這兩點之間的<b>距離</b>——<i>x</i>-<i>t</i> 圖上會標出同一段，兩邊標的是同一個數。按軌道右下角的放大鏡，距離會直接標在軌道上。</p>
     </div>
     <div id="helpTk" style="display:none">
       <p>打點計時器每隔<b>固定的時間</b>在紙帶上打一個點。時距既然固定，<b>點與點的距離就直接代表那段時間跑得多快</b>——點距越大跑越快。這一頁的三張圖，全部是從紙帶上的點距算出來的：</p>
@@ -766,8 +767,9 @@ const X_LIMIT = POS_TICK, V_LIMIT = V_TICK;
 function initState(){
   return {
     screen:0,
-    // 三個參數都從 0 起跳（使用者指定）：一開機車是靜止的，由學生自己推滑桿讓它動起來
-    cars:[{ id:'A', x0:0, v0:0, a:0, visible:true }],
+    // 三個參數都從 0 起跳（使用者指定）：一開機車是靜止的，由學生自己推滑桿讓它動起來。
+    // selA／selB 是軌道上點選兩點測距的選取，掛在每台車身上，四台可以同時各量一段
+    cars:[{ id:'A', x0:0, v0:0, a:0, visible:true, selA:null, selB:null }],
     focus:'A',            // 焦點車：切線／面積畫在誰身上
     open:'A',             // 手風琴：同時只有一張卡展開
     t:0, speed:1, autoPause:false,
@@ -1018,6 +1020,74 @@ function paintTrack(ctx, rt, u){
 
 function drawTrack(ctx){
   if (R.track) paintTrack(ctx, R.track, U);
+}
+
+/* 軌道上點選兩點量距離（與打點分頁的紙帶測距同構，共用 measureArrow／measureTag）。
+   每台車各記各的選取，四台可以同時各量一段，用各自的顏色一起出現在圖上。 */
+// 軌道上的測距標記（兩個圈＋中間的雙箭頭）。主畫面與放大檢視共用同一支
+function paintMeasureOnTrack(ctx, rt, u, i, car, label){
+  if (car.selA === null) return;
+  const nowSec = Math.floor(state.t + 1e-9), col = CAR_COLOR[car.id];
+  const at = off => colXIn(rt, u, i) + off * u;
+  const ring = s => {
+    if (s === null || s > nowSec) return null;   // 時間軸拖回去之後，還沒跑到的點不畫
+    const y = yPos(rt, posAt(car, s));
+    ctx.beginPath(); ctx.arc(at(COL_DOT), y, 7.5 * u, 0, Math.PI * 2);
+    ctx.strokeStyle = col.line; ctx.lineWidth = 2 * u; ctx.setLineDash([]); ctx.stroke();
+    return y;
+  };
+  const ya = ring(car.selA), yb = ring(car.selB);
+  if (ya === null || yb === null) return;
+  // 箭頭放在軌跡點的左側：欄寬只有 54，點（29）右邊緊接著就是秒數標號（36），
+  // 塞不下紙帶那樣往右 14 的偏移
+  const ax = at(COL_DOT - 9);
+  measureArrow(ctx, ax, ya, yb, '', col, u);
+  // 放大檢視是整頁蓋住的視窗，看不到 x-t 圖，數值因此直接標在軌道上（使用者
+  // 2026-09-03 指定）。主畫面照舊只畫箭頭，數值標在 x-t 那一側。
+  // 膠囊掛在欄位左緣而不是像紙帶那樣掛在箭頭旁：欄寬只有 54，掛箭頭旁的膠囊
+  // 會橫跨到軌跡點上，蓋住的正是放大檢視要拿來比對的那排點；靠左則只會與
+  // 台車圖示重疊，而台車只佔當下那一個時刻的高度
+  if (label)
+    measureTag(ctx, at(0), (ya + yb) / 2,
+               fmt(Math.abs(posAt(car, car.selB) - posAt(car, car.selA)), 1) + ' m',
+               col, 0, u, at(0), at(COL_W));
+}
+// 軌道上標出選取的兩點，x-t 圖上同時標出同一段——兩邊標的是同一個數字
+function drawTrackMeasure(ctx){
+  const nowSec = Math.floor(state.t + 1e-9);
+  if (R.track){
+    ctx.save(); clipRect(ctx, R.track);
+    CAR_IDS.forEach((id, i) => {
+      const car = carById(id);
+      if (car && car.visible) paintMeasureOnTrack(ctx, R.track, U, i, car);
+    });
+    ctx.restore();
+  }
+  // x-t 圖上的同一段。多台車同時有選取時往右錯開一格，數字才不會疊在一起
+  const r = R.xt;
+  ctx.save(); clipRect(ctx, r);
+  CAR_IDS.forEach((id, i) => {
+    const car = carById(id);
+    if (!car || !car.visible || car.selA === null || car.selB === null) return;
+    if (car.selA > nowSec || car.selB > nowSec) return;
+    const col = CAR_COLOR[id], off = i * 34 * U;
+    const xa = tx(r, car.selA), xb = tx(r, car.selB);
+    const pa = yPos(r, posAt(car, car.selA)), pb = yPos(r, posAt(car, car.selB));
+    for (const [cx, cy] of [[xa, pa], [xb, pb]]){
+      ctx.beginPath(); ctx.arc(cx, cy, 7.5 * U, 0, Math.PI * 2);
+      ctx.strokeStyle = col.line; ctx.lineWidth = 2 * U; ctx.setLineDash([]); ctx.stroke();
+    }
+    // 標註預設掛在選取區右邊；選到靠近 t = 10 的兩點時右邊沒位置，整組翻到左邊
+    const txt = fmt(Math.abs(posAt(car, car.selB) - posAt(car, car.selA)), 1) + ' m';
+    ctx.font = '700 ' + (11 * U) + 'px ' + FONT_STACK;
+    const need = ctx.measureText(txt).width + 30 * U;
+    const side = Math.max(xa, xb) + off + need <= r.x + r.w ? 1 : -1;
+    const ax = side > 0 ? Math.max(xa, xb) + off + 16 * U : Math.min(xa, xb) - off - 16 * U;
+    dashLine(ctx, xa, px(pa), ax + side * 6 * U, px(pa), hexA(col.line, .5), 1 * U, [4 * U, 3 * U]);
+    dashLine(ctx, xb, px(pb), ax + side * 6 * U, px(pb), hexA(col.line, .5), 1 * U, [4 * U, 3 * U]);
+    measureArrow(ctx, ax, pa, pb, txt, col, U, side);
+  });
+  ctx.restore();
 }
 
 // 跑的過程只描每秒一個點，跑完 10 s 才連成線——讓學生先看見「一秒一秒的位置」，
@@ -1272,6 +1342,7 @@ function render(){
   drawTangent(ctx);
   drawNowDots(ctx);
   drawTrack(ctx);
+  drawTrackMeasure(ctx);   // 測距標記畫在軌道與曲線之上，才不會被點蓋住
 }
 
 /* ═══ 5. DOM 更新（非動畫幀內的文字與版面） ═══ */
@@ -1499,7 +1570,7 @@ document.getElementById('btnAdd').addEventListener('click', () => {
   // 補「缺號最小者」：顏色→車名→軌道欄位的對應永遠固定
   const id = CAR_IDS.find(x => !carById(x));
   if (!id) return;
-  state.cars.push({ id, x0:0, v0:20, a:0, visible:true });
+  state.cars.push({ id, x0:0, v0:20, a:0, visible:true, selA:null, selB:null });
   state.cars.sort((p, q) => CAR_IDS.indexOf(p.id) - CAR_IDS.indexOf(q.id));
   state.focus = id; state.open = id;
   state.drawn = false;   // 多了一台沒跑過的車，整輪重來
@@ -1591,6 +1662,8 @@ document.getElementById('btnReset').addEventListener('click', () => {
   const cars = state.cars, focus = state.focus, open = state.open, atExp = state.atExpanded;
   state = initState();
   state.cars = cars; state.focus = focus; state.open = open; state.atExpanded = atExp;
+  // 重置＝這一輪重跑，選過的兩點還沒被打出來（同 tkReset）
+  for (const car of state.cars){ car.selA = null; car.selB = null; }
   document.getElementById('chkAutoPause').checked = false;
   document.getElementById('chkTangent').checked = false;
   document.getElementById('chkArea').checked = false;
@@ -1665,6 +1738,8 @@ const zoomTrack = document.getElementById('zoomTrack');
 const zoomYAxis = document.getElementById('zoomYAxis');
 const zoomOpen = () => zoomModal.classList.contains('open');
 
+let zoomGeom = null;   // 放大檢視當下的幾何，反算點擊位置時要用（同 tkZoomGeom）
+
 function renderZoom(){
   if (!zoomOpen()) return;
   const availW = zoomBody.clientWidth - zoomYAxis.offsetWidth - 10 * U;
@@ -1694,6 +1769,12 @@ function renderZoom(){
   ctx.clearRect(0, 0, b.width, b.height);
   paintTrackBg(ctx, rt, uz);
   paintTrack(ctx, rt, uz);
+  // label = true：這個視窗蓋住整頁，看不到 x-t 圖，距離直接標在軌道上
+  CAR_IDS.forEach((id, i) => {
+    const car = carById(id);
+    if (car && car.visible) paintMeasureOnTrack(ctx, rt, uz, i, car, true);
+  });
+  zoomGeom = { rt, uz };
 
   zoomYAxis.innerHTML = ticks(POS_RANGE, POS_TICK, 'm');
   document.getElementById('zoomTime').textContent = fmt(state.t, 1);
@@ -1705,6 +1786,51 @@ elTrack.addEventListener('click', e => {
   pause();
   zoomModal.classList.add('open');
   renderZoom();
+});
+
+/* 軌道上點選兩點量距離。命中判定與選取邏輯由主畫面和放大檢視共用，差別只在
+   矩形與倍率——與打點分頁的 tkHitDot／tkSelectDot 是同一套寫法。 */
+// 找離 (x, y) 最近的每秒軌跡點
+function hitTrackDot(x, y, rt, u){
+  const nowSec = Math.floor(state.t + 1e-9);
+  let best = null, bd = 15 * u;
+  CAR_IDS.forEach((id, i) => {
+    const car = carById(id);
+    if (!car || !car.visible) return;
+    const cx = colXIn(rt, u, i) + COL_DOT * u;
+    for (let s = 0; s <= nowSec; s++){
+      const d = Math.hypot(x - cx, yPos(rt, posAt(car, s)) - y);
+      if (d < bd){ bd = d; best = { car, s }; }
+    }
+  });
+  return best;
+}
+// 第一下選起點、第二下選終點、第三下換一組重來。每台車各記各的，
+// 所以四台可以同時各量一段、用各自的顏色一起標在圖上
+function selectTrackDot(car, s){
+  if (car.selA === null) car.selA = s;
+  else if (car.selB === null && s !== car.selA) car.selB = s;
+  else { car.selA = s; car.selB = null; }
+}
+function trackPick(x, y, rt, u){
+  const hit = hitTrackDot(x, y, rt, u);
+  if (!hit) return;
+  selectTrackDot(hit.car, hit.s);
+  render(); renderZoom();
+}
+// 主畫面：事件座標換算成「相對 stage-card」，才能直接餵給 yPos／hitTrackDot
+elTrack.addEventListener('pointerdown', e => {
+  if (!R.track || e.target.closest('.track-zoom')) return;
+  const b = elTrack.getBoundingClientRect();
+  trackPick(e.clientX - b.left + R.track.x, e.clientY - b.top + R.track.y, R.track, U);
+});
+// 放大檢視：canvas 每次 renderZoom() 都連同欄標籤一起重建，事件因此掛在
+// zoomTrack 上做委派；它的矩形原點就是 canvas 左上角，不必再加偏移
+zoomTrack.addEventListener('pointerdown', e => {
+  const cv = zoomTrack.querySelector('canvas');
+  if (!cv || !zoomGeom || !zoomOpen()) return;
+  const b = cv.getBoundingClientRect();
+  trackPick(e.clientX - b.left, e.clientY - b.top, zoomGeom.rt, zoomGeom.uz);
 });
 document.getElementById('btnCloseZoom').addEventListener('click', closeZoom);
 zoomModal.addEventListener('click', e => { if (e.target === e.currentTarget) closeZoom(); });
@@ -2568,10 +2694,11 @@ function tkDrawNowDots(ctx){
   }
 }
 
-/* 點選兩點測距：紙帶上標出點距，x-t 圖上同時標出同一段的高度差。
-   兩邊標的是同一個數字——這就是「紙帶上量到的距離 ＝ x-t 圖上的位移」。
-   每條紙帶各記各的選取，所以兩條可以同時各量一段，用各自的顏色一起出現在圖上。 */
-function tkArrow(ctx, x, y0, y1, txt, col, u, side){
+/* 點選兩點測距：實物（紙帶／軌道）上標出距離，x-t 圖上同時標出同一段的高度差。
+   兩邊標的是同一個數字——這就是「量到的距離 ＝ x-t 圖上的位移」。
+   每條紙帶、每台車各記各的選取，所以可以同時各量一段，用各自的顏色一起出現在圖上。
+   底下兩支繪圖工具由兩個分頁共用，所以不掛 tk 前綴。 */
+function measureArrow(ctx, x, y0, y1, txt, col, u, side){
   const a = Math.min(y0, y1), b = Math.max(y0, y1);
   ctx.strokeStyle = col.line; ctx.lineWidth = 1.5 * u; ctx.setLineDash([]);
   ctx.beginPath(); ctx.moveTo(px(x), a); ctx.lineTo(px(x), b); ctx.stroke();
@@ -2581,8 +2708,8 @@ function tkArrow(ctx, x, y0, y1, txt, col, u, side){
     ctx.moveTo(x, y); ctx.lineTo(x - 3.5 * u, y + s * 6 * u); ctx.lineTo(x + 3.5 * u, y + s * 6 * u);
     ctx.closePath(); ctx.fill();
   }
-  // 紙帶那一側只畫箭頭不掛標籤（txt 為空）：紙帶上已經有秒數標號，
-  // 再放一個數字方塊就會疊在一起。數值改由 x-t 那一側與左欄的說明各標一次
+  // 實物那一側只畫箭頭不掛標籤（txt 為空）：紙帶與軌道上都已經有秒數標號，
+  // 再放一個數字方塊就會疊在一起。數值改由 x-t 那一側標出來
   if (!txt) return;
   ctx.font = '700 ' + (11 * u) + 'px ' + FONT_STACK;
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
@@ -2595,8 +2722,31 @@ function tkArrow(ctx, x, y0, y1, txt, col, u, side){
   ctx.strokeStyle = col.line; ctx.lineWidth = 1 * u; ctx.stroke();
   ctx.fillStyle = col.edge; ctx.fillText(txt, bx + 4 * u, my + 0.5);
 }
+/* 放大檢視裡直接標在紙帶／軌道上的距離。字級用 U 而不是放大倍率：放大是為了把距離
+   拉開，標籤跟著等比放大只會把欄位塞滿。轉 90°／270° 之後膠囊連同文字一起轉回水平 */
+function measureTag(ctx, ax, y, txt, col, rot, u, xMin, xMax){
+  ctx.font = '700 ' + (12 * U) + 'px ' + FONT_STACK;
+  const w = ctx.measureText(txt).width + 12 * U, h = 19 * U;
+  // 膠囊在畫面上一律往右長。0° 時那是欄寬的 +x 方向、180° 時整個座標系翻過來
+  // 變成 −x，所以連錨點都要跟著換邊，否則膠囊會往回蓋住點與箭頭。兩者都可能
+  // 撞到秒數標號那一欄，撞到就翻到箭頭另一側；90°／270° 時膠囊沿紙帶長度方向
+  // 展開，那個方向空間充裕，不必翻邊
+  const back = rot === 2;
+  const x = ax + (back ? -6 : 6) * u;
+  const flip = rot === 0 ? x + w > xMax : back ? x - w < xMin : false;
+  ctx.save();
+  ctx.translate(x, y);
+  if (rot) ctx.rotate(-rot * Math.PI / 2);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  const bx = flip ? -w - 12 * U : 0;
+  roundRectPath(ctx, bx, -h / 2, w, h, 5 * U);
+  ctx.fillStyle = 'rgba(255,255,255,.94)'; ctx.fill();
+  ctx.lineWidth = 1.5 * U; ctx.strokeStyle = col.line; ctx.stroke();
+  ctx.fillStyle = col.edge; ctx.fillText(txt, bx + 6 * U, 0.5);
+  ctx.restore();
+}
 // 紙帶上的測距標記（兩個圈＋中間的雙箭頭）。主畫面與放大檢視共用同一支
-function tkPaintMeasureOnTape(ctx, rt, g, u, i, tape){
+function tkPaintMeasureOnTape(ctx, rt, g, u, i, tape, rot, label){
   if (tape.selA === null) return;
   const n = tkTickCount(tkS.t), xNow = tkXAt(tape, tkS.t), col = tkColor(tape);
   const at = off => rt.x + (g.colW * i + off) * u;
@@ -2608,7 +2758,15 @@ function tkPaintMeasureOnTape(ctx, rt, g, u, i, tape){
     return y;
   };
   const ya = ring(tape.selA), yb = ring(tape.selB);
-  if (ya !== null && yb !== null) tkArrow(ctx, at(g.dot + 14), ya, yb, '', col, u);
+  if (ya === null || yb === null) return;
+  const ax = at(g.dot + 14);
+  measureArrow(ctx, ax, ya, yb, '', col, u);
+  // 放大檢視是整頁蓋住的視窗，看不到 x-t 圖，數值因此直接標在紙帶上（使用者
+  // 2026-09-03 指定）。主畫面照舊只畫箭頭：150px 的紙帶上已經有秒數標號
+  if (label)
+    measureTag(ctx, ax, (ya + yb) / 2,
+              fmt(Math.abs(tkTickX(tape, tape.selB) - tkTickX(tape, tape.selA)), 1) + ' cm',
+              col, rot || 0, u, at(g.paper), at(g.sec));
 }
 /* 圖上的一個數值標記：把那個點圈起來，旁邊掛一個白底膠囊寫出時刻與速度。
    靠右緣或上緣時自動翻邊；row 讓兩條紙帶的標記錯開，不會疊在一起 */
@@ -2657,7 +2815,7 @@ function tkDrawMeasure(ctx){
     const ax = side > 0 ? Math.max(xa, xb) + off + 16 * U : Math.min(xa, xb) - off - 16 * U;
     dashLine(ctx, xa, px(pa), ax + side * 6 * U, px(pa), hexA(col.line, .5), 1 * U, [4 * U, 3 * U]);
     dashLine(ctx, xb, px(pb), ax + side * 6 * U, px(pb), hexA(col.line, .5), 1 * U, [4 * U, 3 * U]);
-    tkArrow(ctx, ax, pa, pb, txt, col, U, side);
+    measureArrow(ctx, ax, pa, pb, txt, col, U, side);
   });
   ctx.restore();
 
@@ -2735,7 +2893,7 @@ function tkRenderZoom(){
   tkS.tapes.forEach((tape, i) => {
     if (!tape.visible) return;
     tkPaintTape(ctx, rz, g, uz, i, tape, rot, true);
-    tkPaintMeasureOnTape(ctx, rz, g, uz, i, tape);
+    tkPaintMeasureOnTape(ctx, rz, g, uz, i, tape, rot, true);
   });
   ctx.restore();
   document.getElementById('tkZoomTime').textContent = fmt(tkS.t, 1);
