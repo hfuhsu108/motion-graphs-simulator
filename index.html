@@ -37,6 +37,10 @@
      比例欄在大屏會自己跟著變寬。--ul 是給「非固定 px 不可」的版面用的，見 template。 */
   --plot-left:calc(290px * var(--u));
   --track-w:calc(222px * var(--u));
+  /* scrubber 是 input[type=range]，值 0 與 10 落在把手中心、也就是元素左右緣各內縮
+     一個把手半徑。刻度、數字標籤與封鎖區都得跟著內縮，否則對齊了圖卻對不上自己的
+     把手。26px 是 .range-lg 的把手寬，不隨 --u 縮放（8.14 D2） */
+  --thumb-half:13px;
 }
 
 /* ═══ 2. base：字體、上下標、觸控（DEV_SPEC 第 3、4、5 節） ═══ */
@@ -175,7 +179,10 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
   background:rgba(255,255,255,.9);border:1px solid var(--c-bd-ctl);color:var(--c-text-2);
   display:flex;align-items:center;justify-content:center;font-size:calc(13px * var(--u))}
 .track-zoom:active{background:#E8EBF0}
-.plot{flex:1;min-width:0;position:relative;border-left:calc(2px * var(--u)) solid var(--c-bd-ctl)}
+/* --t-inset：t 軸右端往內縮的量，由 alignScrubber() 依抽屜能給時間軸的寬度算出來。
+   縮的是三張圖與兩條時間刻度列的右端，好讓 t = 10 落在滑桿把手到得了的最右處
+   （使用者 2026-09-03 指定：滑桿調左側起點、圖調 t 軸右側，兩邊各讓一步） */
+.plot{flex:1;min-width:0;position:relative;margin-right:var(--t-inset,0px);border-left:calc(2px * var(--u)) solid var(--c-bd-ctl)}
 .plot .axname{position:absolute;left:calc(6px * var(--u));top:calc(2px * var(--u));font-size:calc(12px * var(--u));font-weight:700;color:var(--c-text-2)}
 /* x-t 的縱軸數字疊在繪圖區左緣內側：軌道左邊那組離 x-t 圖隔了 222px，讀圖時視線要跨過整條軌道 */
 .plot .axname{left:auto;right:calc(8px * var(--u))}
@@ -191,7 +198,7 @@ main{flex:1;min-height:0;padding:12px 14px 0;position:relative}
 .yaxis-v{width:var(--plot-left);flex:none;position:relative;font-size:calc(12px * var(--u));color:var(--c-text-3)}
 .yaxis-v span{position:absolute;right:6px;white-space:nowrap;transform:translateY(-50%)}
 .yaxis-v span.major{font-weight:700;color:var(--c-text-2)}
-.taxis{flex:none;height:calc(14px * var(--u));display:flex;padding-left:calc(var(--plot-left) + 2px * var(--u));font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.2}
+.taxis{flex:none;height:calc(14px * var(--u));display:flex;padding-left:calc(var(--plot-left) + 2px * var(--u));padding-right:var(--t-inset,0px);font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.2}
 .taxis span{flex:1}
 .taxis span:last-child{flex:none}
 
@@ -264,7 +271,10 @@ label.switch input:checked+.track-sw::after{left:25px}
 /* 速度一律用膠囊（原本橫向是滑桿＋標題列共 55px、直向才是膠囊）：抽屜壓縮後兩種版面
    統一成膠囊，少掉「播放速度 1.00×」那一行標題。滑桿與標題列留在 DOM 裡不刪，
    `setSpeed()` 仍會同步它們——重置與鍵盤操作都還走同一條路徑 */
-.speedbox{flex:none;width:auto}
+/* 膠囊左邊掛可見標籤，逐字比照 dissolution-sim 的 .speed／.speed .name
+   （來源：dissolution-sim/index.html:219-220，使用者 2026-09-03 指定「就像溶解模擬」） */
+.speedbox{display:flex;align-items:center;gap:10px;flex:none}
+.speedbox .name{font-size:calc(13px * var(--u));color:var(--c-text-2);font-weight:700;flex:none;line-height:1.3}
 /* 分段切換器（DESIGN_SPEC 第 4 節）。判準：選了它，畫面上其他控制項或整組內容會跟著改變；
    膠囊選完旁邊的東西原封不動。本檔兩處都符合——播放速度倍率，以及紙帶頁的自動／手動拉紙
    （切過去之後設定區的選單會換成另一組）。打點頻率是挑參數值，所以用膠囊。 */
@@ -294,15 +304,15 @@ label.switch input:checked+.track-sw::after{left:25px}
 .scrubbox .head .now{margin-left:auto;font-weight:700;color:var(--c-primary);font-size:calc(15px * var(--u));white-space:nowrap}
 .scrub-wrap{position:relative;height:26px;display:flex;align-items:center}
 .scrub-wrap input{position:relative;z-index:2}
-.scrub-ticks{position:absolute;inset:0;pointer-events:none;z-index:1}
+.scrub-ticks{position:absolute;top:0;bottom:0;left:var(--thumb-half);right:var(--thumb-half);pointer-events:none;z-index:1}
 .scrub-ticks i{position:absolute;top:50%;transform:translate(-50%,-50%);width:2px;height:16px;background:#A2ABB8}
 .scrub-ticks i.passed{background:rgba(255,255,255,.7)}
 /* 出界之後的時段：斜線底表示「這段跑不到」，不是單純的灰色軌道 */
-.scrub-blocked{position:absolute;top:50%;right:0;transform:translateY(-50%);height:14px;z-index:3;
+.scrub-blocked{position:absolute;top:50%;right:var(--thumb-half);transform:translateY(-50%);height:14px;z-index:3;
   pointer-events:none;border-radius:0 7px 7px 0;display:none;
   background:repeating-linear-gradient(135deg,#DDE1E7 0 4px,#EEF0F3 4px 8px)}
 .scrub-blocked.on{display:block}
-.scrubbox .marks{display:flex;justify-content:space-between;font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.1;margin-top:3px}
+.scrubbox .marks{display:flex;justify-content:space-between;font-size:calc(12px * var(--u));color:var(--c-text-3);line-height:1.1;margin:3px var(--thumb-half) 0}
 
 .bottomnav{height:56px;flex:none;display:flex;align-items:center;padding:0 18px;background:var(--c-nav);gap:10px}
 /* 分頁視覺 40px，上下 padding 撐滿導覽列 → 實際命中 56px（稿 E） */
@@ -627,7 +637,8 @@ label.switch input:checked+.track-sw::after{left:25px}
       <!-- 速度統一為分段切換器三檔（DESIGN_SPEC 第 4、6 節）。原本 .head 與滑桿都是
            display:none、只有三顆按鈕看得見，JS 卻還在維護那支滑桿，一併清掉 -->
       <div class="speedbox">
-        <div class="seg" id="segSpeed" role="group" aria-label="播放速度">
+        <span class="name">動畫速度</span>
+        <div class="seg" id="segSpeed" role="group" aria-label="動畫速度">
           <button data-speed="0.5" aria-pressed="false">0.5×</button>
           <button data-speed="1" aria-pressed="true">1×</button>
           <button data-speed="2" aria-pressed="false">2×</button>
@@ -1503,7 +1514,8 @@ function updateReadouts(){
                    : '';
   const blocked = document.getElementById('scrubBlocked');
   blocked.classList.toggle('on', end.kind !== null);
-  blocked.style.width = (1 - end.t / T_MAX) * 100 + '%';
+  // 百分比的基準是內縮過的軌道（左右各少一個把手半徑），不是元素全寬
+  blocked.style.width = 'calc((100% - 2 * var(--thumb-half)) * ' + (1 - end.t / T_MAX) + ')';
 
   const sc = document.getElementById('scrubber');
   if (sc.value !== String(state.t)) { sc.value = state.t; refreshFill(sc); }
@@ -1950,6 +1962,57 @@ function fitCanvas(canvas){
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);                  // 之後一律用 CSS px 座標繪製
   return ctx;
 }
+/* 底部時間軸與三張圖的 t 軸對齊（使用者 2026-09-03 指定）：拖到某一刻時，圖上的
+   時間游標就落在把手正下方。兩邊各讓一步——滑桿把左側起點右移到圖的 t = 0，三張圖
+   把 t 軸右端左縮到把手到得了的最右處（`--t-inset`）。不用負 margin 去突破抽屜的
+   內距：把手若探出卡片邊緣，圓角與陰影就破了。 */
+const SCRUB_THUMB = 26;   // 同 .range-lg 的把手寬，不隨 --u 縮放（8.14 D2）
+let tInset = 0;           // 目前套用的 --t-inset
+function alignScrubber(){
+  const box = document.querySelector('.scrubbox'), drawer = document.getElementById('drawer');
+  const onTape = state.screen === 1;
+  const r = onTape ? RT.xt : R.xt;
+  const card = document.getElementById(onTape ? 'tkStage' : 'stageCard');
+  if (!box || !r || !card) return false;
+  const cb = card.getBoundingClientRect();
+  if (cb.width < 50) return false;   // 版面還沒就緒，量到的是異常小的矩形（同 fitAll）
+  const cs = getComputedStyle(drawer), db = drawer.getBoundingClientRect();
+  const contentL = db.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
+  const contentR = db.right - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight);
+  const half = SCRUB_THUMB / 2;
+  const xtL = cb.left + r.x;         // 繪圖區左緣＝t = 0，不受 --t-inset 影響
+  const want = contentR - (xtL - half);
+  // 同一列上其他控制項佔掉的寬度。它們全是 flex:none，空間不夠時 margin-left:auto
+  // 推不動，時間軸會整條溢出抽屜右緣——所以放不下就得認賠，不能只看 want 本身
+  const row = box.parentElement, bt = box.getBoundingClientRect();
+  const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+  let used = 0;
+  for (const el of row.children){
+    if (el === box) continue;
+    const er = el.getBoundingClientRect();
+    if (er.width < 0.5) continue;                                  // 另一分頁的控制項是隱藏的
+    if (er.bottom <= bt.top + 1 || er.top >= bt.bottom - 1) continue;   // 換行了，不同列不算
+    used += er.width + gap;
+  }
+  // 抽屜給不出這麼寬（窄視窗、左邊控制項排滿）就整個放棄對齊，回到原本的 flex:1
+  if (want < 120 || want > contentR - contentL - used || xtL - half < contentL){
+    box.style.cssText = '';
+    if (!tInset) return false;
+    tInset = 0; document.documentElement.style.setProperty('--t-inset', '0px');
+    return true;
+  }
+  box.style.flex = 'none';
+  box.style.minWidth = '0';          // 直向版面的 min-width:100% 會蓋掉下面這行
+  box.style.width = want + 'px';
+  box.style.marginLeft = 'auto';
+  // 累加修正：讀到的右緣已經套用過上一次的 inset，直接算差額會在下次 resize 時彈回去
+  const next = Math.max(0, tInset + (cb.left + r.x + r.w - (contentR - half)));
+  if (Math.abs(next - tInset) < 0.5) return false;
+  tInset = next;
+  document.documentElement.style.setProperty('--t-inset', tInset + 'px');
+  return true;                       // 版面變了，呼叫端要重新量一次
+}
+
 function fitAll(){
   if (state.screen !== 0) return;
   applyScale();
@@ -1961,6 +2024,9 @@ function fitAll(){
   bgCtx = fitCanvas(bgCanvas);
   fgCtx = fitCanvas(fgCanvas);
   measure();
+  // 對齊會改掉三張圖的寬度（--t-inset），改了就得重新量一次再畫。
+  // canvas 蓋的是整張 stage-card，尺寸不受影響，不必再 fitCanvas
+  if (alignScrubber()) measure();
   renderBg(); render();
 }
 // 旋轉與分割畫面靠 ResizeObserver 重算，不監聽 orientationchange
@@ -3039,7 +3105,8 @@ function tkUpdateReadouts(){
     end.kind === 'x' ? (end.id ? end.id + ' ' : '') + '紙帶已拉到 ' + TK_X_LIMIT + ' cm' : '';
   const blocked = document.getElementById('scrubBlocked');
   blocked.classList.toggle('on', end.kind !== null);
-  blocked.style.width = (1 - end.t / TK_T_MAX) * 100 + '%';
+  // 同車子分頁：基準是內縮過的軌道，不是元素全寬
+  blocked.style.width = 'calc((100% - 2 * var(--thumb-half)) * ' + (1 - end.t / TK_T_MAX) + ')';
 
   const nMax = tkTickCount(tkS.t) - 1;
   document.getElementById('tkTangentVal').textContent = fmt(shown ? tkVNow(tape) : 0, 1);
@@ -3083,7 +3150,9 @@ function tkFitAll(){
   if (r.width < 50 || r.height < 50){ requestAnimationFrame(tkFitAll); return; }
   tkBgCtx = fitCanvas(tkBgCanvas);
   tkFgCtx = fitCanvas(tkFgCanvas);
-  tkMeasure(); tkRenderBg(); tkRender();
+  tkMeasure();
+  if (alignScrubber()) tkMeasure();   // 同 fitAll：對齊改了圖寬就重量一次
+  tkRenderBg(); tkRender();
 }
 new ResizeObserver(tkFitAll).observe(tkStage);
 
