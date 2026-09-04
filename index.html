@@ -763,6 +763,13 @@ const PARAM = {
 };
 // 軌道 222px ＝ 左右各 3px 留白 ＋ 4 欄 × 54px；欄內位置：車 12、軌跡點 29、秒數 36
 const TRACK_PAD = 3, COL_W = 54, COL_CAR = 12, COL_DOT = 29, COL_SEC = 36;
+// 軌跡點與測距圈的半徑，以及它們在放大檢視裡的縮放上限（理由見 paintTrack()）
+const DOT_R = 3.5, DOT_R_NOW = 4.5, RING_R = 7.5, ZOOM_DOT_K = 1.3;
+/* 點與圈的縮放：跟著放大倍率長大，但封在 ZOOM_DOT_K 倍（使用者 2026-09-04 指定
+   「中間的係數」）。完全跟著倍率會比放大前更糊，完全不跟又太小。
+   主畫面的 u 就是 U、比值為 1，外觀不變；倍率比 U 還小時（大屏配上很小的視窗）
+   取 1，不會縮得比主畫面還小。兩個分頁共用這一支。 */
+const dotScale = u => U * Math.max(1, Math.min(ZOOM_DOT_K, u / U));
 
 // 三個縱軸固定不動（使用者 2026-08-21 指定），軸不隨參數或播放改變，
 // 不同參數的車才能直接比對曲線形狀。
@@ -997,20 +1004,24 @@ function paintTrack(ctx, rt, u){
     // 每秒軌跡點：整數秒直接代公式，不累積資料陣列（DEV_SPEC 6.4）。
     // 舊點同色同 alpha，併成一條 path 一次填完
     ctx.fillStyle = col.track;
+    // 點的大小走 dotScale() 而不是直接乘 u：放大檢視的倍率到 2.9 倍，縱向間距卻
+    // 只放大 2.2 倍（間距由 .ztrack 的高度決定，不是倍率），點跟著倍率等比長大
+    // 就會比放大前更糊——放大是為了把點距看清楚，不是把點看清楚
+    const k = dotScale(u), dotR = DOT_R * k, dotNowR = DOT_R_NOW * k;
     if (nowSec > 0){
       ctx.globalAlpha = 0.6;
       ctx.beginPath();
       for (let s = 0; s < nowSec; s++){
         const y = yPos(rt, posAt(car, s));
-        ctx.moveTo(x0 + (COL_DOT + 3.5) * u, y);
-        ctx.arc(x0 + COL_DOT * u, y, 3.5 * u, 0, Math.PI * 2);
+        ctx.moveTo(x0 + COL_DOT * u + dotR, y);
+        ctx.arc(x0 + COL_DOT * u, y, dotR, 0, Math.PI * 2);
       }
       ctx.fill();
       ctx.globalAlpha = 1;
     }
     const yNow = yPos(rt, posAt(car, nowSec));
-    ctx.beginPath(); ctx.arc(x0 + COL_DOT * u, yNow, 4.5 * u, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 2 * u; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x0 + COL_DOT * u, yNow, dotNowR, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 2 * k; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
 
     // 秒數標號：兩點擠在一起時只省略數字，點照畫
     let lastLabelY = -Infinity;
@@ -1043,8 +1054,10 @@ function paintMeasureOnTrack(ctx, rt, u, i, car, label){
   const ring = s => {
     if (s === null || s > nowSec) return null;   // 時間軸拖回去之後，還沒跑到的點不畫
     const y = yPos(rt, posAt(car, s));
-    ctx.beginPath(); ctx.arc(at(COL_DOT), y, 7.5 * u, 0, Math.PI * 2);
-    ctx.strokeStyle = col.line; ctx.lineWidth = 2 * u; ctx.setLineDash([]); ctx.stroke();
+    // 圈與箭頭走同一支 dotScale()（同 paintTrack 的理由）：圈是用來指出「選了哪
+    // 兩個點」，跟著倍率等比放大就會蓋掉旁邊那幾個要拿來比對的點
+    ctx.beginPath(); ctx.arc(at(COL_DOT), y, RING_R * dotScale(u), 0, Math.PI * 2);
+    ctx.strokeStyle = col.line; ctx.lineWidth = 2 * dotScale(u); ctx.setLineDash([]); ctx.stroke();
     return y;
   };
   const ya = ring(car.selA), yb = ring(car.selB);
@@ -1052,7 +1065,7 @@ function paintMeasureOnTrack(ctx, rt, u, i, car, label){
   // 箭頭放在軌跡點的左側：欄寬只有 54，點（29）右邊緊接著就是秒數標號（36），
   // 塞不下紙帶那樣往右 14 的偏移
   const ax = at(COL_DOT - 9);
-  measureArrow(ctx, ax, ya, yb, '', col, u);
+  measureArrow(ctx, ax, ya, yb, '', col, dotScale(u));
   // 放大檢視是整頁蓋住的視窗，看不到 x-t 圖，數值因此直接標在軌道上（使用者
   // 2026-09-03 指定）。主畫面照舊只畫箭頭，數值標在 x-t 那一側。
   // 膠囊掛在欄位左緣而不是像紙帶那樣掛在箭頭旁：欄寬只有 54，掛箭頭旁的膠囊
@@ -1085,7 +1098,7 @@ function drawTrackMeasure(ctx){
     const xa = tx(r, car.selA), xb = tx(r, car.selB);
     const pa = yPos(r, posAt(car, car.selA)), pb = yPos(r, posAt(car, car.selB));
     for (const [cx, cy] of [[xa, pa], [xb, pb]]){
-      ctx.beginPath(); ctx.arc(cx, cy, 7.5 * U, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(cx, cy, RING_R * U, 0, Math.PI * 2);
       ctx.strokeStyle = col.line; ctx.lineWidth = 2 * U; ctx.setLineDash([]); ctx.stroke();
     }
     // 標註預設掛在選取區右邊；選到靠近 t = 10 的兩點時右邊沒位置，整組翻到左邊
@@ -1967,6 +1980,9 @@ function fitCanvas(canvas){
    把 t 軸右端左縮到把手到得了的最右處（`--t-inset`）。不用負 margin 去突破抽屜的
    內距：把手若探出卡片邊緣，圓角與陰影就破了。 */
 const SCRUB_THUMB = 26;   // 同 .range-lg 的把手寬，不隨 --u 縮放（8.14 D2）
+// 抽屜控制項之間的間隔：SCRUB_GAP 是設計稿的舒適值，對齊需要空間時可以壓到
+// SCRUB_GAP_MIN，再不夠才放棄對齊（.drawer-row 的 CSS gap 仍是 20px）
+const SCRUB_GAP = 20, SCRUB_GAP_MIN = 10;
 let tInset = 0;           // 目前套用的 --t-inset
 function alignScrubber(){
   const box = document.querySelector('.scrubbox'), drawer = document.getElementById('drawer');
@@ -1982,25 +1998,30 @@ function alignScrubber(){
   const half = SCRUB_THUMB / 2;
   const xtL = cb.left + r.x;         // 繪圖區左緣＝t = 0，不受 --t-inset 影響
   const want = contentR - (xtL - half);
-  // 同一列上其他控制項佔掉的寬度。它們全是 flex:none，空間不夠時 margin-left:auto
-  // 推不動，時間軸會整條溢出抽屜右緣——所以放不下就得認賠，不能只看 want 本身
+  // 同一列上其他控制項佔掉的寬度（不含間隔）。它們全是 flex:none，空間不夠時
+  // margin-left:auto 推不動，時間軸會整條溢出抽屜右緣
   const row = box.parentElement, bt = box.getBoundingClientRect();
-  const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-  let used = 0;
+  let used = 0, gaps = 0;
   for (const el of row.children){
     if (el === box) continue;
     const er = el.getBoundingClientRect();
     if (er.width < 0.5) continue;                                  // 另一分頁的控制項是隱藏的
     if (er.bottom <= bt.top + 1 || er.top >= bt.bottom - 1) continue;   // 換行了，不同列不算
-    used += er.width + gap;
+    used += er.width; gaps++;
   }
-  // 抽屜給不出這麼寬（窄視窗、左邊控制項排滿）就整個放棄對齊，回到原本的 flex:1
-  if (want < 120 || want > contentR - contentL - used || xtL - half < contentL){
+  /* 剩下的空間分給控制項之間的間隔。1280 寬、U = 1 時 want 比可用寬度多出 13.5px，
+     差的正是這幾個間隔——設計稿的 20px 是舒適值不是下限，壓到 SCRUB_GAP_MIN 以上
+     都還讀得開，而「時間軸對得上圖」比間隔寬鬆重要。壓到底仍放不下才放棄對齊。 */
+  const gapRoom = gaps > 0 ? (contentR - contentL - used - want) / gaps : SCRUB_GAP;
+  if (want < 120 || gapRoom < SCRUB_GAP_MIN || xtL - half < contentL){
+    row.style.columnGap = '';
     box.style.cssText = '';
     if (!tInset) return false;
     tInset = 0; document.documentElement.style.setProperty('--t-inset', '0px');
     return true;
   }
+  // 間隔只收不放：空間有餘就維持設計稿的 20px，不夠才壓到剛好放得下
+  row.style.columnGap = Math.min(SCRUB_GAP, gapRoom) + 'px';
   box.style.flex = 'none';
   box.style.minWidth = '0';          // 直向版面的 min-width:100% 會蓋掉下面這行
   box.style.width = want + 'px';
@@ -2490,7 +2511,8 @@ function tkPaintTape(ctx, rt, g, u, i, tape, rot, showSec, cue){
     ctx.beginPath();
     // 收尾之後不再放大最後一點：這一輪已經結束，沒有「剛打的點」可強調，
     // 而放大的那 1px 剛好會吃掉它與撕痕之間的空隙
-    ctx.arc(at(g.dot), ys[k], (newest && tkS.tear === 0 ? 4.5 : 3.5) * u, 0, Math.PI * 2);
+    // 半徑走 dotScale()、不直接乘 u：與車子分頁一致辦理（使用者 2026-09-04 指定）
+    ctx.arc(at(g.dot), ys[k], (newest && tkS.tear === 0 ? DOT_R_NOW : DOT_R) * dotScale(u), 0, Math.PI * 2);
     ctx.fillStyle = newest ? col.line : TK_C.ink;
     ctx.fill();
   }
@@ -2766,12 +2788,20 @@ function tkDrawNowDots(ctx){
    底下兩支繪圖工具由兩個分頁共用，所以不掛 tk 前綴。 */
 function measureArrow(ctx, x, y0, y1, txt, col, u, side){
   const a = Math.min(y0, y1), b = Math.max(y0, y1);
+  // 兩點很近時（選相鄰的兩個點，本模擬最常用的操作）三角形要跟著縮，
+  // 否則兩個箭頭頭部會互相重疊、糊成一個菱形
+  const tipH = Math.min(6 * u, (b - a) / 2), tipW = 3.5 * u;
   ctx.strokeStyle = col.line; ctx.lineWidth = 1.5 * u; ctx.setLineDash([]);
-  ctx.beginPath(); ctx.moveTo(px(x), a); ctx.lineTo(px(x), b); ctx.stroke();
+  // 線段只畫在兩個三角形的底邊之間。畫到尖端的話，預設的平頭線帽（butt）會在
+  // 尖端外露出 1.5u 寬的一截——三角形在那裡的寬度是 0，所以看起來就是「三角形
+  // 黏了一段方頭線」，尖端出現直角（使用者 2026-09-04 指出）
+  if (b - a > 2 * tipH){
+    ctx.beginPath(); ctx.moveTo(px(x), a + tipH); ctx.lineTo(px(x), b - tipH); ctx.stroke();
+  }
   ctx.fillStyle = col.line;
   for (const [y, s] of [[a, 1], [b, -1]]){
     ctx.beginPath();
-    ctx.moveTo(x, y); ctx.lineTo(x - 3.5 * u, y + s * 6 * u); ctx.lineTo(x + 3.5 * u, y + s * 6 * u);
+    ctx.moveTo(x, y); ctx.lineTo(x - tipW, y + s * tipH); ctx.lineTo(x + tipW, y + s * tipH);
     ctx.closePath(); ctx.fill();
   }
   // 實物那一側只畫箭頭不掛標籤（txt 為空）：紙帶與軌道上都已經有秒數標號，
@@ -2819,14 +2849,15 @@ function tkPaintMeasureOnTape(ctx, rt, g, u, i, tape, rot, label){
   const ring = k => {
     if (k === null || k >= n) return null;
     const y = tkYPos(rt, xNow - tkTickX(tape, k));
-    ctx.beginPath(); ctx.arc(at(g.dot), y, 7.5 * u, 0, Math.PI * 2);
-    ctx.strokeStyle = col.line; ctx.lineWidth = 2 * u; ctx.setLineDash([]); ctx.stroke();
+    // 圈與箭頭同樣走 dotScale()：與車子分頁一致辦理（使用者 2026-09-04 指定）
+    ctx.beginPath(); ctx.arc(at(g.dot), y, RING_R * dotScale(u), 0, Math.PI * 2);
+    ctx.strokeStyle = col.line; ctx.lineWidth = 2 * dotScale(u); ctx.setLineDash([]); ctx.stroke();
     return y;
   };
   const ya = ring(tape.selA), yb = ring(tape.selB);
   if (ya === null || yb === null) return;
   const ax = at(g.dot + 14);
-  measureArrow(ctx, ax, ya, yb, '', col, u);
+  measureArrow(ctx, ax, ya, yb, '', col, dotScale(u));
   // 放大檢視是整頁蓋住的視窗，看不到 x-t 圖，數值因此直接標在紙帶上（使用者
   // 2026-09-03 指定）。主畫面照舊只畫箭頭：150px 的紙帶上已經有秒數標號
   if (label)
