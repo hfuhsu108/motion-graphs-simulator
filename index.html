@@ -769,7 +769,9 @@ const DOT_R = 3.5, DOT_R_NOW = 4.5, RING_R = 7.5, ZOOM_DOT_K = 1.3;
    「中間的係數」）。完全跟著倍率會比放大前更糊，完全不跟又太小。
    主畫面的 u 就是 U、比值為 1，外觀不變；倍率比 U 還小時（大屏配上很小的視窗）
    取 1，不會縮得比主畫面還小。兩個分頁共用這一支。 */
-const dotScale = u => U * Math.max(1, Math.min(ZOOM_DOT_K, u / U));
+/* 名字刻意帶 zoom：dissolution-sim 有一支同名的 dotScale()，那支是無參數的
+   「粒子隨燒杯大小縮放」，與這支語意完全不同（DEV_SPEC 5「同一個詞不得指兩件事」） */
+const zoomDotScale = u => U * Math.max(1, Math.min(ZOOM_DOT_K, u / U));
 
 // 三個縱軸固定不動（使用者 2026-08-21 指定），軸不隨參數或播放改變，
 // 不同參數的車才能直接比對曲線形狀。
@@ -1004,10 +1006,10 @@ function paintTrack(ctx, rt, u){
     // 每秒軌跡點：整數秒直接代公式，不累積資料陣列（DEV_SPEC 6.4）。
     // 舊點同色同 alpha，併成一條 path 一次填完
     ctx.fillStyle = col.track;
-    // 點的大小走 dotScale() 而不是直接乘 u：放大檢視的倍率到 2.9 倍，縱向間距卻
+    // 點的大小走 zoomDotScale() 而不是直接乘 u：放大檢視的倍率到 2.9 倍，縱向間距卻
     // 只放大 2.2 倍（間距由 .ztrack 的高度決定，不是倍率），點跟著倍率等比長大
     // 就會比放大前更糊——放大是為了把點距看清楚，不是把點看清楚
-    const k = dotScale(u), dotR = DOT_R * k, dotNowR = DOT_R_NOW * k;
+    const k = zoomDotScale(u), dotR = DOT_R * k, dotNowR = DOT_R_NOW * k;
     if (nowSec > 0){
       ctx.globalAlpha = 0.6;
       ctx.beginPath();
@@ -1054,10 +1056,10 @@ function paintMeasureOnTrack(ctx, rt, u, i, car, label){
   const ring = s => {
     if (s === null || s > nowSec) return null;   // 時間軸拖回去之後，還沒跑到的點不畫
     const y = yPos(rt, posAt(car, s));
-    // 圈與箭頭走同一支 dotScale()（同 paintTrack 的理由）：圈是用來指出「選了哪
+    // 圈與箭頭走同一支 zoomDotScale()（同 paintTrack 的理由）：圈是用來指出「選了哪
     // 兩個點」，跟著倍率等比放大就會蓋掉旁邊那幾個要拿來比對的點
-    ctx.beginPath(); ctx.arc(at(COL_DOT), y, RING_R * dotScale(u), 0, Math.PI * 2);
-    ctx.strokeStyle = col.line; ctx.lineWidth = 2 * dotScale(u); ctx.setLineDash([]); ctx.stroke();
+    ctx.beginPath(); ctx.arc(at(COL_DOT), y, RING_R * zoomDotScale(u), 0, Math.PI * 2);
+    ctx.strokeStyle = col.line; ctx.lineWidth = 2 * zoomDotScale(u); ctx.setLineDash([]); ctx.stroke();
     return y;
   };
   const ya = ring(car.selA), yb = ring(car.selB);
@@ -1065,7 +1067,7 @@ function paintMeasureOnTrack(ctx, rt, u, i, car, label){
   // 箭頭放在軌跡點的左側：欄寬只有 54，點（29）右邊緊接著就是秒數標號（36），
   // 塞不下紙帶那樣往右 14 的偏移
   const ax = at(COL_DOT - 9);
-  measureArrow(ctx, ax, ya, yb, '', col, dotScale(u));
+  measureArrow(ctx, ax, ya, yb, '', col, zoomDotScale(u));
   // 放大檢視是整頁蓋住的視窗，看不到 x-t 圖，數值因此直接標在軌道上（使用者
   // 2026-09-03 指定）。主畫面照舊只畫箭頭，數值標在 x-t 那一側。
   // 膠囊掛在欄位左緣而不是像紙帶那樣掛在箭頭旁：欄寬只有 54，掛箭頭旁的膠囊
@@ -2511,8 +2513,8 @@ function tkPaintTape(ctx, rt, g, u, i, tape, rot, showSec, cue){
     ctx.beginPath();
     // 收尾之後不再放大最後一點：這一輪已經結束，沒有「剛打的點」可強調，
     // 而放大的那 1px 剛好會吃掉它與撕痕之間的空隙
-    // 半徑走 dotScale()、不直接乘 u：與車子分頁一致辦理（使用者 2026-09-04 指定）
-    ctx.arc(at(g.dot), ys[k], (newest && tkS.tear === 0 ? DOT_R_NOW : DOT_R) * dotScale(u), 0, Math.PI * 2);
+    // 半徑走 zoomDotScale()、不直接乘 u：與車子分頁一致辦理（使用者 2026-09-04 指定）
+    ctx.arc(at(g.dot), ys[k], (newest && tkS.tear === 0 ? DOT_R_NOW : DOT_R) * zoomDotScale(u), 0, Math.PI * 2);
     ctx.fillStyle = newest ? col.line : TK_C.ink;
     ctx.fill();
   }
@@ -2849,15 +2851,15 @@ function tkPaintMeasureOnTape(ctx, rt, g, u, i, tape, rot, label){
   const ring = k => {
     if (k === null || k >= n) return null;
     const y = tkYPos(rt, xNow - tkTickX(tape, k));
-    // 圈與箭頭同樣走 dotScale()：與車子分頁一致辦理（使用者 2026-09-04 指定）
-    ctx.beginPath(); ctx.arc(at(g.dot), y, RING_R * dotScale(u), 0, Math.PI * 2);
-    ctx.strokeStyle = col.line; ctx.lineWidth = 2 * dotScale(u); ctx.setLineDash([]); ctx.stroke();
+    // 圈與箭頭同樣走 zoomDotScale()：與車子分頁一致辦理（使用者 2026-09-04 指定）
+    ctx.beginPath(); ctx.arc(at(g.dot), y, RING_R * zoomDotScale(u), 0, Math.PI * 2);
+    ctx.strokeStyle = col.line; ctx.lineWidth = 2 * zoomDotScale(u); ctx.setLineDash([]); ctx.stroke();
     return y;
   };
   const ya = ring(tape.selA), yb = ring(tape.selB);
   if (ya === null || yb === null) return;
   const ax = at(g.dot + 14);
-  measureArrow(ctx, ax, ya, yb, '', col, dotScale(u));
+  measureArrow(ctx, ax, ya, yb, '', col, zoomDotScale(u));
   // 放大檢視是整頁蓋住的視窗，看不到 x-t 圖，數值因此直接標在紙帶上（使用者
   // 2026-09-03 指定）。主畫面照舊只畫箭頭：150px 的紙帶上已經有秒數標號
   if (label)
